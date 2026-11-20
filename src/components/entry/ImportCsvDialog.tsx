@@ -182,16 +182,6 @@ export function ImportCsvDialog({
                 Created {result.createdCategoriesCount} new custom category(ies) from CSV.
               </p>
             )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => dialogRef.current?.close()}
-              >
-                Done
-              </button>
-            </div>
           </div>
         ) : preview ? (
           <>
@@ -315,8 +305,8 @@ export function ImportCsvDialog({
                   </div>
                 )}
 
-                <div className="table-wrapper" style={{ maxBlockSize: '260px', marginBottom: '1rem' }}>
-                  <table className="ledger-table">
+                <div className="table-wrapper" style={{ maxBlockSize: '260px', marginBottom: '0.75rem' }}>
+                  <table className="ledger-table import-preview-table">
                     <thead>
                       <tr>
                         <th scope="col">Row</th>
@@ -345,7 +335,7 @@ export function ImportCsvDialog({
                           <td>{row.rawSummary.type}</td>
                           <td>{row.rawSummary.category}</td>
                           <td className="amount-cell tabular-nums">{row.rawSummary.amount}</td>
-                          <td style={{ whiteSpace: 'pre-wrap', maxWidth: 180 }}>
+                          <td style={{ whiteSpace: 'pre-wrap' }}>
                             {row.rawSummary.note}
                           </td>
                         </tr>
@@ -354,34 +344,54 @@ export function ImportCsvDialog({
                   </table>
                 </div>
                 {preview.rows.length > PREVIEW_ROW_LIMIT && (
-                  <p className="card-caption" style={{ marginBottom: '1rem' }}>
+                  <p className="card-caption" style={{ marginBottom: '0.5rem' }}>
                     Showing first {PREVIEW_ROW_LIMIT} of {preview.rows.length} rows in preview. All {importableCount} valid rows will be imported atomically.
                   </p>
                 )}
               </>
             )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => dialogRef.current?.close()}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={isImporting || Boolean(preview.headerError) || importableCount === 0}
-                onClick={() => onConfirmImport(strategy)}
-              >
-                {isImporting
-                  ? 'Importing...'
-                  : `Import ${importableCount} Row${importableCount === 1 ? '' : 's'}`}
-              </button>
-            </div>
           </>
         ) : null}
+      </div>
+
+      <div className="dialog-footer">
+        {result ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => dialogRef.current?.close()}
+          >
+            Done
+          </button>
+        ) : preview ? (
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => dialogRef.current?.close()}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={isImporting || Boolean(preview.headerError) || importableCount === 0}
+              onClick={() => onConfirmImport(strategy)}
+            >
+              {isImporting
+                ? 'Importing...'
+                : `Import ${importableCount} Row${importableCount === 1 ? '' : 's'}`}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => dialogRef.current?.close()}
+          >
+            Close
+          </button>
+        )}
       </div>
     </dialog>
   );
