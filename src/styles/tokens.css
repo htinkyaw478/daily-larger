@@ -1,0 +1,37 @@
+:root {
+  /* 60% Dominant Canvas & Surfaces */
+  --surface-white: #ffffff;
+  --surface-canvas: #f8fbfe;
+  --surface-tint: #e3f2fd;
+
+  /* 30% Secondary Structure & Text */
+  --text-primary: #333333;
+  --text-muted: #5c6b7a;
+  --blue-sky: #90caf9;
+  --border-subtle: #dbe9f6;
+
+  /* 10% Primary Accent & High Emphasis */
+  --blue-main: #2196f3;
+  --blue-deep: #0d47a1;
+
+  /* Restrained Semantic Accents */
+  --income-fg: #0f9d58;
+  --income-bg: #e8f5e9;
+  --expense-fg: #d93025;
+  --expense-bg: #fdecea;
+
+  /* Typography */
+  --font-display: 'DM Serif Display', 'Noto Sans Myanmar', Georgia, serif;
+  --font-sans: 'DM Sans', 'Noto Sans Myanmar', system-ui, -apple-system, sans-serif;
+
+  /* Elevation & Radii */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --shadow-card: 0 10px 30px -12px rgba(13, 71, 161, 0.08), 0 2px 6px rgba(13, 71, 161, 0.04);
+  --shadow-float: 0 24px 60px -16px rgba(13, 71, 161, 0.22);
+
+  color-scheme: light;
+  accent-color: var(--blue-main);
+  scrollbar-color: var(--blue-sky) var(--surface-tint);
+}
