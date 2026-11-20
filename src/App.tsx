@@ -386,7 +386,11 @@ export function App() {
                 {isLocalMode ? (
                   <>
                     <div>
-                      <strong>IndexedDB Mode (v{storageStatus.dbVersion}):</strong>{' '}
+                      <strong>
+                        {storageStatus.engine === 'localstorage'
+                          ? 'Local Storage Fallback Mode:'
+                          : `IndexedDB Mode (v${storageStatus.dbVersion}):`}
+                      </strong>{' '}
                       စာရင်းများကို ဤ Browser sandbox storage ထဲတွင်သာ သိမ်းဆည်းထားပါသည် (Device များကြား auto-sync မဖြစ်ပါ — iPhone Safari တွင် Backup JSON သိမ်းထားသင့်ပါသည်)။
                     </div>
                     <div

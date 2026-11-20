@@ -18,7 +18,7 @@ export type StorageMode = 'api' | 'local';
 
 export interface StorageStatus {
   mode: StorageMode;
-  engine: 'indexeddb' | 'api';
+  engine: 'indexeddb' | 'localstorage' | 'api';
   reason: 'no_api_configured' | 'api_unreachable' | 'api_connected' | 'manual_local';
   apiConfigured: boolean;
   indexedDbAvailable: boolean;

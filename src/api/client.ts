@@ -7,6 +7,7 @@ import {
 import {
   getStorageStatus,
   indexedDbAdapter,
+  localStorageFallbackAdapter,
   resolveStorage,
   switchStorageMode,
 } from '../storage/storageManager';
@@ -152,6 +153,10 @@ export function useImportBackup() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (rawJson: string) => {
+      const storage = await resolveStorage();
+      if (storage === localStorageFallbackAdapter) {
+        return localStorageFallbackAdapter.importBackupJson(rawJson);
+      }
       return indexedDbAdapter.importBackupJson(rawJson);
     },
     onSuccess: () => {
@@ -229,7 +234,11 @@ export async function downloadTransactionsCsv(
 }
 
 export async function downloadLocalBackupJson(): Promise<void> {
-  const payload = await indexedDbAdapter.exportBackupPayload();
+  const storage = await resolveStorage();
+  const payload =
+    storage === localStorageFallbackAdapter
+      ? localStorageFallbackAdapter.exportBackupPayload()
+      : await indexedDbAdapter.exportBackupPayload();
   const json = JSON.stringify(payload, null, 2);
   const filename = `daily-ledger-backup-${new Date().toISOString().slice(0, 10)}.json`;
   triggerFileDownload(json, filename, 'application/json;charset=utf-8;');
@@ -237,4 +246,5 @@ export async function downloadLocalBackupJson(): Promise<void> {
 
 export function dismissCorruptedNotice(): void {
   indexedDbAdapter.dismissCorruptedNotice();
+  localStorageFallbackAdapter.dismissCorruptedNotice();
 }

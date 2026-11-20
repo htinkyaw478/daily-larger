@@ -249,7 +249,8 @@ export class IndexedDbStorageAdapter implements LedgerStorage {
             await this.db.open();
           }
 
-          await this.requestPersistentStorageOnce();
+          // Request persistent storage asynchronously so permission/API quirks never block DB init
+          void this.requestPersistentStorageOnce();
 
           await this.db.transaction(
             'rw',

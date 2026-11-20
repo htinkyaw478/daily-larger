@@ -673,6 +673,13 @@ dialog::backdrop {
   min-height: 0;
 }
 
+.entry-form-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .dialog-footer {
   display: flex;
   flex-wrap: wrap;

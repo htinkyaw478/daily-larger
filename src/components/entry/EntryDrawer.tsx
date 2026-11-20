@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { DEFAULT_CATEGORIES } from '../../domain/ledgerLogic';
 import type {
   Category,
   CreateTransactionInput,
@@ -14,6 +15,17 @@ import {
 import { CategoryIcon } from '../ui/CategoryIcon';
 
 const PAYMENT_METHODS = ['Cash', 'KBZPay', 'WavePay', 'Bank Transfer', 'Card'];
+
+/**
+ * Converts Myanmar digits (၀-၉) and full-width digits to ASCII 0-9 for mobile keyboards.
+ */
+function normalizeNumericInput(raw: string): string {
+  return raw
+    .replace(/[\u1040-\u1049]/g, (ch) => String(ch.charCodeAt(0) - 0x1040))
+    .replace(/[\uFF10-\uFF19]/g, (ch) => String(ch.charCodeAt(0) - 0xff10))
+    .replace(/[,\s]/g, '')
+    .trim();
+}
 
 export function EntryDrawer({
   isOpen,
@@ -36,13 +48,21 @@ export function EntryDrawer({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const wasOpenRef = useRef(false);
   const titleId = useId();
   const amountHintId = useId();
   const amountErrorId = useId();
 
+  const effectiveCategories = useMemo(
+    () => (categories.length > 0 ? categories : DEFAULT_CATEGORIES),
+    [categories]
+  );
+
   const [type, setType] = useState<TransactionType>('expense');
   const [amountStr, setAmountStr] = useState('');
-  const [categoryId, setCategoryId] = useState<number>(0);
+  const [categoryId, setCategoryId] = useState<number>(
+    () => effectiveCategories.find((c) => c.type === 'expense')?.id ?? 6
+  );
   const [transactionDate, setTransactionDate] = useState<string>(toLocalDateString());
   const [paymentMethod, setPaymentMethod] = useState<string>('Cash');
   const [note, setNote] = useState<string>('');
@@ -51,13 +71,24 @@ export function EntryDrawer({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const filteredCategories = useMemo(
-    () => categories.filter((c) => c.type === type),
-    [categories, type]
+    () => effectiveCategories.filter((c) => c.type === type),
+    [effectiveCategories, type]
   );
 
-  // Sync form state when opening for Create vs Edit
+  // Sync form state ONLY when opening or switching editingTx (never wipe typed input when categories load)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+
+    const justOpened = !wasOpenRef.current;
+    wasOpenRef.current = true;
+
+    if (!justOpened && !editingTx) {
+      return;
+    }
+
     setServerError(null);
     setAmountInvalid(false);
     setAmountErrorMsg('');
@@ -72,13 +103,13 @@ export function EntryDrawer({
     } else {
       setType('expense');
       setAmountStr('');
-      const defaultExpense = categories.find((c) => c.type === 'expense');
-      setCategoryId(defaultExpense?.id ?? 0);
+      const defaultExpense = effectiveCategories.find((c) => c.type === 'expense');
+      setCategoryId(defaultExpense?.id ?? 6);
       setTransactionDate(toLocalDateString());
       setPaymentMethod('Cash');
       setNote('');
     }
-  }, [isOpen, editingTx, categories]);
+  }, [isOpen, editingTx, effectiveCategories]);
 
   // Keep categoryId aligned when switching between Income and Expense
   useEffect(() => {
@@ -145,11 +176,11 @@ export function EntryDrawer({
   }, [onClose]);
 
   const validateAmount = (raw: string): number | null => {
-    const cleaned = raw.replace(/,/g, '').trim();
+    const cleaned = normalizeNumericInput(raw);
     const num = Number(cleaned);
     if (!cleaned || Number.isNaN(num) || num <= 0) {
       setAmountInvalid(true);
-      setAmountErrorMsg('Enter an amount greater than 0 (e.g., 15000).');
+      setAmountErrorMsg('ပမာဏ 0 ထက်ကြီးသော ဂဏန်းထည့်ပါ · Enter an amount greater than 0.');
       return null;
     }
     setAmountInvalid(false);
@@ -163,22 +194,32 @@ export function EntryDrawer({
 
     const parsedAmount = validateAmount(amountStr);
     if (parsedAmount === null) {
+      setServerError('ပမာဏ မှန်ကန်စွာ ထည့်ပါ · Please enter a valid amount greater than 0.');
       amountInputRef.current?.focus();
       return;
     }
 
-    if (!categoryId) {
+    const safeCategoryId =
+      filteredCategories.some((c) => c.id === categoryId)
+        ? categoryId
+        : (filteredCategories[0]?.id ?? 0);
+
+    if (!safeCategoryId) {
       setServerError('Please select a category.');
       return;
     }
+
+    const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(transactionDate)
+      ? transactionDate
+      : toLocalDateString();
 
     try {
       await onSubmit(
         {
           type,
           amount: parsedAmount,
-          categoryId,
-          transactionDate,
+          categoryId: safeCategoryId,
+          transactionDate: safeDate,
           paymentMethod,
           note: note.trim() || null,
         },
@@ -189,6 +230,7 @@ export function EntryDrawer({
         setAmountStr('');
         setNote('');
         setAmountInvalid(false);
+        setAmountErrorMsg('');
         amountInputRef.current?.focus();
       }
     } catch (err) {
@@ -220,8 +262,12 @@ export function EntryDrawer({
         </button>
       </div>
 
-      <div className="dialog-body">
-        <form onSubmit={(e) => handleSubmit(e, false)} noValidate>
+      <form
+        className="entry-form-shell"
+        onSubmit={(e) => handleSubmit(e, false)}
+        noValidate
+      >
+        <div className="dialog-body">
           <fieldset className="segmented-toggle">
             <legend className="visually-hidden">Transaction type</legend>
             <label className="segmented-option segmented-option--expense">
@@ -289,6 +335,7 @@ export function EntryDrawer({
               }
               onChange={(e) => {
                 setAmountStr(e.target.value);
+                if (serverError) setServerError(null);
                 if (amountInvalid) {
                   validateAmount(e.target.value);
                 }
@@ -388,17 +435,18 @@ export function EntryDrawer({
               className="form-input"
             />
           </div>
+        </div>
 
+        <div className="dialog-footer" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
           {serverError && (
             <div
               role="alert"
               style={{
-                padding: '0.75rem 0.9rem',
+                padding: '0.65rem 0.85rem',
                 borderRadius: '10px',
                 background: 'var(--expense-bg)',
                 color: 'var(--expense-fg)',
-                marginBottom: '1rem',
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
                 fontWeight: 500,
               }}
             >
@@ -406,7 +454,7 @@ export function EntryDrawer({
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
             <button type="submit" className="btn btn-primary" disabled={isSaving}>
               {isSaving
                 ? 'Saving...'
@@ -426,8 +474,8 @@ export function EntryDrawer({
               </button>
             )}
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </dialog>
   );
 }
