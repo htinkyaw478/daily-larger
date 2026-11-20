@@ -13,11 +13,23 @@ export type StorageMode = 'api' | 'local';
 
 export interface StorageStatus {
   mode: StorageMode;
+  engine: 'indexeddb' | 'api';
   reason: 'no_api_configured' | 'api_unreachable' | 'api_connected' | 'manual_local';
   apiConfigured: boolean;
+  indexedDbAvailable: boolean;
+  dbVersion: number;
+  persisted: boolean | null;
+  usageBytes: number | null;
+  quotaBytes: number | null;
+  quotaPercent: number | null;
+  quotaWarning: boolean;
   corruptedRecoveryKey: string | null;
   hasLocalData: boolean;
   localTransactionCount: number;
+  migratedFromLocalStorage: boolean;
+  hasLegacyLocalStorageData: boolean;
+  legacyLocalStorageCount: number;
+  storageError: string | null;
 }
 
 export interface LedgerStorage {

@@ -6,7 +6,7 @@ import {
 } from '../storage/ledgerStorage';
 import {
   getStorageStatus,
-  localAdapter,
+  indexedDbAdapter,
   resolveStorage,
   switchStorageMode,
 } from '../storage/storageManager';
@@ -26,7 +26,7 @@ export function useStorageStatus() {
       await resolveStorage();
       return getStorageStatus();
     },
-    staleTime: Infinity,
+    staleTime: 30_000,
   });
 }
 
@@ -61,7 +61,7 @@ export function useDashboardSummary(from: string, to: string) {
     queryFn: async () => {
       const storage = await resolveStorage();
       const result = await storage.getDashboardSummary(from, to);
-      queryClient.setQueryData(['storage-status'], getStorageStatus());
+      queryClient.setQueryData(['storage-status'], await getStorageStatus());
       return result;
     },
   });
@@ -147,12 +147,24 @@ export function useImportBackup() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (rawJson: string) => {
-      return localAdapter.importBackupJson(rawJson);
+      return indexedDbAdapter.importBackupJson(rawJson);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-status'] });
+    },
+  });
+}
+
+export function useClearLegacyLocalStorage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      indexedDbAdapter.clearLegacyLocalStorageData();
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['storage-status'] });
     },
   });
@@ -180,13 +192,13 @@ export async function downloadTransactionsCsv(
   triggerFileDownload(csv, filename, 'text/csv;charset=utf-8;');
 }
 
-export function downloadLocalBackupJson(): void {
-  const payload = localAdapter.exportBackupPayload();
+export async function downloadLocalBackupJson(): Promise<void> {
+  const payload = await indexedDbAdapter.exportBackupPayload();
   const json = JSON.stringify(payload, null, 2);
   const filename = `daily-ledger-backup-${new Date().toISOString().slice(0, 10)}.json`;
   triggerFileDownload(json, filename, 'application/json;charset=utf-8;');
 }
 
 export function dismissCorruptedNotice(): void {
-  localAdapter.dismissCorruptedNotice();
+  indexedDbAdapter.dismissCorruptedNotice();
 }

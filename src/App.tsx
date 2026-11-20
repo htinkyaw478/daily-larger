@@ -6,7 +6,9 @@ import {
   HardDrive,
   Plus,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import { type ChangeEvent, useEffect, useRef, useState } from 'react';
@@ -17,6 +19,7 @@ import {
   getSavedCurrencyPreference,
   saveCurrencyPreference,
   useCategories,
+  useClearLegacyLocalStorage,
   useCreateTransaction,
   useDashboardSummary,
   useDeleteTransaction,
@@ -30,6 +33,7 @@ import {
 import { CashFlowChart } from './components/dashboard/CashFlowChart';
 import { CategoryRing } from './components/dashboard/CategoryRing';
 import { KpiCards } from './components/dashboard/KpiCards';
+import { ConfirmClearLegacyDialog } from './components/entry/ConfirmClearLegacyDialog';
 import { ConfirmDeleteDialog } from './components/entry/ConfirmDeleteDialog';
 import { ConfirmRestoreDialog } from './components/entry/ConfirmRestoreDialog';
 import { EntryDrawer } from './components/entry/EntryDrawer';
@@ -46,6 +50,14 @@ import {
   type CurrencyCode,
   type PeriodPreset,
 } from './utils/formatters';
+
+function formatBytes(bytes: number | null): string {
+  if (bytes === null || !Number.isFinite(bytes)) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
 
 export function App() {
   const [currency, setCurrency] = useState<CurrencyCode>(() => getSavedCurrencyPreference());
@@ -64,6 +76,7 @@ export function App() {
     fileName: string;
     rawJson: string;
   } | null>(null);
+  const [clearLegacyOpen, setClearLegacyOpen] = useState(false);
   const [corruptedDismissed, setCorruptedDismissed] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -71,7 +84,7 @@ export function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3400);
+    const timer = setTimeout(() => setToast(null), 3600);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -90,6 +103,7 @@ export function App() {
   const deleteMutation = useDeleteTransaction();
   const sampleMutation = useSeedSampleData();
   const importBackupMutation = useImportBackup();
+  const clearLegacyMutation = useClearLegacyLocalStorage();
 
   const storageStatus = storageStatusQuery.data;
 
@@ -169,10 +183,10 @@ export function App() {
     }
   };
 
-  const handleBackupDownload = () => {
+  const handleBackupDownload = async () => {
     setActionError(null);
     try {
-      downloadLocalBackupJson();
+      await downloadLocalBackupJson();
       setToast('Backup JSON သိမ်းဆည်းပြီးပါပြီ · Backup downloaded');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Backup download failed');
@@ -204,6 +218,18 @@ export function App() {
     } catch (err) {
       setPendingRestore(null);
       setActionError(err instanceof Error ? err.message : 'Failed to restore backup');
+    }
+  };
+
+  const handleConfirmClearLegacy = async () => {
+    setActionError(null);
+    try {
+      await clearLegacyMutation.mutateAsync();
+      setClearLegacyOpen(false);
+      setToast('localStorage အဟောင်းကို ရှင်းလင်းပြီးပါပြီ · Legacy copy cleared');
+    } catch (err) {
+      setClearLegacyOpen(false);
+      setActionError(err instanceof Error ? err.message : 'Unable to clear legacy data');
     }
   };
 
@@ -287,17 +313,48 @@ export function App() {
               ) : (
                 <Database size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
               )}
-              <span>
+              <div>
                 {isLocalMode ? (
                   <>
-                    <strong>Local Storage Mode:</strong> စာရင်းများကို ဤ Browser ထဲတွင်သာ သိမ်းဆည်းထားပါသည် (Device များကြား sync မဖြစ်ပါ) — Backup Export လုပ်ထားနိုင်ပါသည်။
+                    <div>
+                      <strong>IndexedDB Mode (v{storageStatus.dbVersion}):</strong>{' '}
+                      စာရင်းများကို ဤ Browser sandbox storage ထဲတွင်သာ သိမ်းဆည်းထားပါသည် (Device များကြား auto-sync မဖြစ်ပါ — iPhone Safari တွင် Backup JSON သိမ်းထားသင့်ပါသည်)။
+                    </div>
+                    <div
+                      className="tabular-nums"
+                      style={{
+                        marginTop: '0.2rem',
+                        fontSize: '0.8rem',
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '0.6rem',
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <ShieldCheck size={13} aria-hidden="true" />
+                        Persistence:{' '}
+                        {storageStatus.persisted === true
+                          ? 'Granted'
+                          : storageStatus.persisted === false
+                            ? 'Best-effort'
+                            : 'Browser-managed'}
+                      </span>
+                      {storageStatus.usageBytes !== null && storageStatus.quotaBytes !== null && (
+                        <span>
+                          Storage: {formatBytes(storageStatus.usageBytes)} /{' '}
+                          {formatBytes(storageStatus.quotaBytes)}
+                          {storageStatus.quotaPercent !== null ? ` (${storageStatus.quotaPercent}%)` : ''}
+                        </span>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <>
                     <strong>PostgreSQL API Mode:</strong> Connected to server database.
                   </>
                 )}
-              </span>
+              </div>
             </div>
 
             <div className="storage-banner-actions">
@@ -327,6 +384,16 @@ export function App() {
                     aria-label="Choose backup JSON file"
                     onChange={handleBackupFileSelected}
                   />
+                  {storageStatus.hasLegacyLocalStorageData && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary storage-badge-btn"
+                      onClick={() => setClearLegacyOpen(true)}
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                      Clear Old localStorage ({storageStatus.legacyLocalStorageCount})
+                    </button>
+                  )}
                 </>
               )}
 
@@ -350,11 +417,41 @@ export function App() {
                   onClick={() => switchModeMutation.mutate('local')}
                 >
                   <HardDrive size={14} aria-hidden="true" />
-                  Use Local Mode
+                  Use IndexedDB Mode
                 </button>
               )}
             </div>
           </section>
+        )}
+
+        {isLocalMode && storageStatus?.quotaWarning && (
+          <div
+            role="alert"
+            className="card"
+            style={{
+              marginBottom: '1.25rem',
+              borderColor: 'var(--expense-fg)',
+              background: 'var(--expense-bg)',
+              color: 'var(--expense-fg)',
+            }}
+          >
+            Browser storage usage is above 80% ({storageStatus.quotaPercent}%). Please download a JSON backup and remove older records if needed.
+          </div>
+        )}
+
+        {isLocalMode && storageStatus?.storageError && (
+          <div
+            role="alert"
+            className="card"
+            style={{
+              marginBottom: '1.25rem',
+              borderColor: 'var(--expense-fg)',
+              background: 'var(--expense-bg)',
+              color: 'var(--expense-fg)',
+            }}
+          >
+            {storageStatus.storageError}
+          </div>
         )}
 
         {storageStatus?.corruptedRecoveryKey && !corruptedDismissed && (
@@ -375,7 +472,7 @@ export function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <AlertTriangle size={18} aria-hidden="true" />
               <span>
-                Corrupted browser data was detected and safely preserved under{' '}
+                Malformed browser records were quarantined safely under{' '}
                 <code>{storageStatus.corruptedRecoveryKey}</code>.
               </span>
             </div>
@@ -499,6 +596,14 @@ export function App() {
         isRestoring={importBackupMutation.isPending}
         onCancel={() => setPendingRestore(null)}
         onConfirm={handleConfirmRestore}
+      />
+
+      <ConfirmClearLegacyDialog
+        isOpen={clearLegacyOpen}
+        legacyCount={storageStatus?.legacyLocalStorageCount ?? 0}
+        isClearing={clearLegacyMutation.isPending}
+        onCancel={() => setClearLegacyOpen(false)}
+        onConfirm={handleConfirmClearLegacy}
       />
 
       {toast && (
