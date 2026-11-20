@@ -1,4 +1,9 @@
 import type {
+  CsvImportPreview,
+  CsvImportResult,
+  DuplicateStrategy,
+} from '../domain/csvImport';
+import type {
   Category,
   CreateTransactionInput,
   DashboardSummary,
@@ -42,6 +47,11 @@ export interface LedgerStorage {
   deleteTransaction(id: number): Promise<{ id: number; deleted: boolean }>;
   seedSampleData(): Promise<{ inserted: number; message: string }>;
   exportCsv(filters: TransactionFilters, currency: CurrencyCode): Promise<string>;
+  previewCsvImport(rawCsvText: string): Promise<CsvImportPreview>;
+  executeCsvImport(
+    preview: CsvImportPreview,
+    strategy: DuplicateStrategy
+  ): Promise<CsvImportResult>;
 }
 
 const CURRENCY_STORAGE_KEY = 'daily_ledger_currency';

@@ -349,6 +349,8 @@ export function buildTransactionsCsv(rows: Transaction[], currency: CurrencyCode
     'Note',
     'Currency',
     'Amount',
+    'Created At',
+    'Updated At',
   ].join(',');
 
   const lines = rows.map((row) =>
@@ -362,6 +364,8 @@ export function buildTransactionsCsv(rows: Transaction[], currency: CurrencyCode
       escapeCsvCell(row.note ?? ''),
       escapeCsvCell(currency),
       escapeCsvCell(row.amount.toFixed(2)),
+      escapeCsvCell(row.createdAt),
+      escapeCsvCell(row.updatedAt),
     ].join(',')
   );
 

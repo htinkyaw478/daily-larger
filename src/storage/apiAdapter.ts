@@ -1,3 +1,9 @@
+import {
+  type CsvImportPreview,
+  type CsvImportResult,
+  type DuplicateStrategy,
+  parseAndBuildCsvImportPreview,
+} from '../domain/csvImport';
 import type {
   Category,
   CreateTransactionInput,
@@ -139,5 +145,95 @@ export class ApiStorageAdapter implements LedgerStorage {
       throw new Error(`CSV export failed (${res.status})`);
     }
     return res.text();
+  }
+
+  async previewCsvImport(rawCsvText: string): Promise<CsvImportPreview> {
+    const [categories, list] = await Promise.all([
+      this.getCategories(),
+      this.listTransactions({ page: 1, limit: 100 }),
+    ]);
+    return parseAndBuildCsvImportPreview(rawCsvText, categories, list.data);
+  }
+
+  async executeCsvImport(
+    preview: CsvImportPreview,
+    strategy: DuplicateStrategy
+  ): Promise<CsvImportResult> {
+    if (preview.headerError) {
+      throw new Error(preview.headerError);
+    }
+
+    const categories = await this.getCategories();
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let invalidCount = 0;
+    let createdCategoriesCount = 0;
+
+    for (const row of preview.rows) {
+      if (row.status === 'invalid' || !row.parsed) {
+        invalidCount += 1;
+        continue;
+      }
+      const parsed = row.parsed;
+
+      let cat = categories.find(
+        (c) =>
+          c.type === parsed.type &&
+          c.name.toLowerCase() === parsed.categoryName.toLowerCase()
+      );
+      if (!cat) {
+        const res = await this.apiFetch<{ data: Category }>('/categories', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: parsed.categoryName,
+            nameMy: parsed.categoryNameMy,
+            type: parsed.type,
+            icon: 'tag',
+            color: parsed.type === 'income' ? '#2196F3' : '#1565C0',
+          }),
+        });
+        cat = res.data;
+        categories.push(cat);
+        createdCategoriesCount += 1;
+      }
+
+      if (row.status === 'duplicate') {
+        if (strategy === 'skip') {
+          skippedCount += 1;
+          continue;
+        }
+        if (strategy === 'update' && row.matchedExistingId) {
+          await this.updateTransaction(row.matchedExistingId, {
+            type: parsed.type,
+            amount: parsed.amount,
+            categoryId: cat.id,
+            transactionDate: parsed.transactionDate,
+            paymentMethod: parsed.paymentMethod,
+            note: parsed.note,
+          });
+          updatedCount += 1;
+          continue;
+        }
+      }
+
+      await this.createTransaction({
+        type: parsed.type,
+        amount: parsed.amount,
+        categoryId: cat.id,
+        transactionDate: parsed.transactionDate,
+        paymentMethod: parsed.paymentMethod,
+        note: parsed.note,
+      });
+      insertedCount += 1;
+    }
+
+    return {
+      insertedCount,
+      updatedCount,
+      skippedCount,
+      invalidCount,
+      createdCategoriesCount,
+    };
   }
 }

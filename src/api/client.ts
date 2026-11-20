@@ -11,6 +11,11 @@ import {
   switchStorageMode,
 } from '../storage/storageManager';
 import type {
+  CsvImportPreview,
+  CsvImportResult,
+  DuplicateStrategy,
+} from '../domain/csvImport';
+import type {
   CreateTransactionInput,
   TransactionFilters,
   TransactionType,
@@ -165,6 +170,37 @@ export function useClearLegacyLocalStorage() {
       indexedDbAdapter.clearLegacyLocalStorageData();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storage-status'] });
+    },
+  });
+}
+
+export function usePreviewCsvImport() {
+  return useMutation({
+    mutationFn: async (rawCsvText: string): Promise<CsvImportPreview> => {
+      const storage = await resolveStorage();
+      return storage.previewCsvImport(rawCsvText);
+    },
+  });
+}
+
+export function useExecuteCsvImport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      preview,
+      strategy,
+    }: {
+      preview: CsvImportPreview;
+      strategy: DuplicateStrategy;
+    }): Promise<CsvImportResult> => {
+      const storage = await resolveStorage();
+      return storage.executeCsvImport(preview, strategy);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['storage-status'] });
     },
   });

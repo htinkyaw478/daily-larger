@@ -14,10 +14,12 @@
     "@tanstack/react-query": "^5.66.0",
     "dexie": "^4.4.7",
     "lucide-react": "^0.475.0",
+    "papaparse": "^5.7.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",

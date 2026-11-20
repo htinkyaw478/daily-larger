@@ -1,4 +1,10 @@
 import {
+  type CsvImportPreview,
+  type CsvImportResult,
+  type DuplicateStrategy,
+  parseAndBuildCsvImportPreview,
+} from '../domain/csvImport';
+import {
   buildSampleTransactionInputs,
   buildTransactionsCsv,
   computeDashboardSummary,
@@ -290,6 +296,69 @@ export class LocalStorageAdapter implements LedgerStorage {
     const { transactions } = this.loadState();
     const sorted = filterAndSortTransactions(transactions, filters);
     return buildTransactionsCsv(sorted, currency);
+  }
+
+  async previewCsvImport(rawCsvText: string): Promise<CsvImportPreview> {
+    const state = this.loadState();
+    return parseAndBuildCsvImportPreview(rawCsvText, state.categories, state.transactions);
+  }
+
+  async executeCsvImport(
+    preview: CsvImportPreview,
+    strategy: DuplicateStrategy
+  ): Promise<CsvImportResult> {
+    if (preview.headerError) {
+      throw new Error(preview.headerError);
+    }
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let invalidCount = 0;
+
+    for (const row of preview.rows) {
+      if (row.status === 'invalid' || !row.parsed) {
+        invalidCount += 1;
+        continue;
+      }
+      if (row.status === 'duplicate') {
+        if (strategy === 'skip') {
+          skippedCount += 1;
+          continue;
+        }
+        if (strategy === 'update' && row.matchedExistingId && row.parsed.matchedCategoryId) {
+          await this.updateTransaction(row.matchedExistingId, {
+            type: row.parsed.type,
+            amount: row.parsed.amount,
+            categoryId: row.parsed.matchedCategoryId,
+            transactionDate: row.parsed.transactionDate,
+            paymentMethod: row.parsed.paymentMethod,
+            note: row.parsed.note,
+          });
+          updatedCount += 1;
+          continue;
+        }
+      }
+      if (row.parsed.matchedCategoryId) {
+        await this.createTransaction({
+          type: row.parsed.type,
+          amount: row.parsed.amount,
+          categoryId: row.parsed.matchedCategoryId,
+          transactionDate: row.parsed.transactionDate,
+          paymentMethod: row.parsed.paymentMethod,
+          note: row.parsed.note,
+        });
+        insertedCount += 1;
+      }
+    }
+
+    return {
+      insertedCount,
+      updatedCount,
+      skippedCount,
+      invalidCount,
+      createdCategoriesCount: 0,
+    };
   }
 
   exportBackupPayload(): LedgerBackupFile {

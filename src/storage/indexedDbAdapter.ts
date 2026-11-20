@@ -1,5 +1,11 @@
 import Dexie from 'dexie';
 import {
+  type CsvImportPreview,
+  type CsvImportResult,
+  type DuplicateStrategy,
+  parseAndBuildCsvImportPreview,
+} from '../domain/csvImport';
+import {
   buildSampleTransactionInputs,
   buildTransactionsCsv,
   computeDashboardSummary,
@@ -646,6 +652,176 @@ export class IndexedDbStorageAdapter implements LedgerStorage {
     const { transactions } = await this.loadValidState();
     const sorted = filterAndSortTransactions(transactions, filters);
     return buildTransactionsCsv(sorted, currency);
+  }
+
+  async previewCsvImport(rawCsvText: string): Promise<CsvImportPreview> {
+    const { categories, transactions } = await this.loadValidState();
+    return parseAndBuildCsvImportPreview(rawCsvText, categories, transactions);
+  }
+
+  async executeCsvImport(
+    preview: CsvImportPreview,
+    strategy: DuplicateStrategy
+  ): Promise<CsvImportResult> {
+    if (preview.headerError) {
+      throw new Error(preview.headerError);
+    }
+
+    try {
+      await this.ensureInitialized();
+
+      return await this.db.transaction(
+        'rw',
+        this.db.categories,
+        this.db.transactions,
+        this.db.meta,
+        async () => {
+          const currentCats = await this.db.categories.toArray();
+          const currentTxs = await this.db.transactions.toArray();
+          const usedIds = new Set(
+            currentTxs.map((t) => t.id).filter((id): id is number => typeof id === 'number')
+          );
+
+          const insertedByFingerprint = new Map<string, number>();
+          let insertedCount = 0;
+          let updatedCount = 0;
+          let skippedCount = 0;
+          let invalidCount = 0;
+          let createdCategoriesCount = 0;
+
+          const resolveCategoryId = async (
+            type: 'income' | 'expense',
+            categoryName: string,
+            categoryNameMy: string | null
+          ): Promise<number> => {
+            const found = currentCats.find(
+              (c) =>
+                c.type === type &&
+                (c.name.toLowerCase() === categoryName.toLowerCase() ||
+                  (categoryNameMy && c.nameMy && c.nameMy.trim() === categoryNameMy.trim()))
+            );
+            if (found && typeof found.id === 'number') {
+              return found.id;
+            }
+
+            const newCat: StoredCategoryRow = {
+              name: categoryName,
+              nameMy: categoryNameMy,
+              type,
+              icon: 'tag',
+              color: type === 'income' ? '#2196F3' : '#1565C0',
+              isDefault: false,
+            };
+            const newId = Number(await this.db.categories.add(newCat));
+            currentCats.push({ ...newCat, id: newId });
+            createdCategoriesCount += 1;
+            return newId;
+          };
+
+          const nowIso = new Date().toISOString();
+
+          for (const row of preview.rows) {
+            if (row.status === 'invalid' || !row.parsed) {
+              invalidCount += 1;
+              continue;
+            }
+
+            const parsed = row.parsed;
+            const categoryId = await resolveCategoryId(
+              parsed.type,
+              parsed.categoryName,
+              parsed.categoryNameMy
+            );
+            const fp = [
+              parsed.transactionDate,
+              parsed.type,
+              parsed.categoryName.trim().toLowerCase(),
+              parsed.amount.toFixed(2),
+              parsed.paymentMethod.trim().toLowerCase(),
+              (parsed.note ?? '').trim(),
+            ].join('|');
+
+            if (row.status === 'duplicate') {
+              if (strategy === 'skip') {
+                skippedCount += 1;
+                continue;
+              }
+
+              if (strategy === 'update') {
+                const targetId =
+                  (parsed.id !== null && usedIds.has(parsed.id) ? parsed.id : undefined) ??
+                  row.matchedExistingId ??
+                  insertedByFingerprint.get(fp);
+
+                if (targetId !== undefined && usedIds.has(targetId)) {
+                  const existing = await this.db.transactions.get(targetId);
+                  await this.db.transactions.update(targetId, {
+                    type: parsed.type,
+                    amount: parsed.amount,
+                    categoryId,
+                    transactionDate: parsed.transactionDate,
+                    paymentMethod: parsed.paymentMethod,
+                    note: parsed.note,
+                    updatedAt: parsed.updatedAt ?? nowIso,
+                    syncStatus: existing?.remoteId ? 'pending_sync' : 'local_only',
+                  });
+                  updatedCount += 1;
+                  continue;
+                }
+              }
+            }
+
+            // Insert new record (preserve ID when non-colliding and not forcing import_as_new duplicate)
+            const canPreserveId =
+              parsed.id !== null &&
+              !usedIds.has(parsed.id) &&
+              !(row.status === 'duplicate' && strategy === 'import_as_new');
+
+            const newRow: StoredTransactionRow = {
+              ...(canPreserveId ? { id: parsed.id! } : {}),
+              type: parsed.type,
+              amount: parsed.amount,
+              categoryId,
+              transactionDate: parsed.transactionDate,
+              paymentMethod: parsed.paymentMethod,
+              note: parsed.note,
+              createdAt: parsed.createdAt ?? nowIso,
+              updatedAt: parsed.updatedAt ?? parsed.createdAt ?? nowIso,
+              syncStatus: 'local_only',
+              remoteId: null,
+            };
+
+            const assignedId = Number(await this.db.transactions.add(newRow));
+            usedIds.add(assignedId);
+            insertedByFingerprint.set(fp, assignedId);
+            insertedCount += 1;
+          }
+
+          await this.db.meta.put({
+            key: 'last_csv_import',
+            value: {
+              importedAt: nowIso,
+              strategy,
+              insertedCount,
+              updatedCount,
+              skippedCount,
+              invalidCount,
+            },
+            updatedAt: nowIso,
+          });
+
+          return {
+            insertedCount,
+            updatedCount,
+            skippedCount,
+            invalidCount,
+            createdCategoriesCount,
+          };
+        }
+      );
+    } catch (error) {
+      throw normalizeDbError(error, 'CSV import failed and was rolled back.');
+    }
   }
 
   async exportBackupPayload(): Promise<LedgerBackupFile> {

@@ -1,5 +1,5 @@
-import { Download, Pencil, Search, Trash2 } from 'lucide-react';
-import { useId } from 'react';
+import { Download, Pencil, Search, Trash2, Upload } from 'lucide-react';
+import { type ChangeEvent, useId, useRef } from 'react';
 import type {
   Category,
   SortOption,
@@ -27,6 +27,7 @@ export function TransactionTable({
   onEdit,
   onDeleteRequest,
   onExportCsv,
+  onImportCsvFile,
 }: {
   transactions: Transaction[];
   total: number;
@@ -40,9 +41,19 @@ export function TransactionTable({
   onEdit: (tx: Transaction) => void;
   onDeleteRequest: (tx: Transaction) => void;
   onExportCsv: () => void;
+  onImportCsvFile: (file: File) => void;
 }) {
   const captionId = useId();
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) {
+      onImportCsvFile(file);
+    }
+  };
 
   return (
     <section className="card" aria-labelledby={captionId}>
@@ -56,14 +67,32 @@ export function TransactionTable({
           </p>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={onExportCsv}
-        >
-          <Download size={17} aria-hidden="true" />
-          Export CSV
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => csvInputRef.current?.click()}
+          >
+            <Upload size={17} aria-hidden="true" />
+            Import CSV
+          </button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv,application/csv,text/plain"
+            className="visually-hidden"
+            aria-label="Choose CSV file to import"
+            onChange={handleFileChange}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onExportCsv}
+          >
+            <Download size={17} aria-hidden="true" />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="ledger-toolbar">

@@ -23,7 +23,9 @@ import {
   useCreateTransaction,
   useDashboardSummary,
   useDeleteTransaction,
+  useExecuteCsvImport,
   useImportBackup,
+  usePreviewCsvImport,
   useSeedSampleData,
   useStorageStatus,
   useSwitchStorageMode,
@@ -37,7 +39,13 @@ import { ConfirmClearLegacyDialog } from './components/entry/ConfirmClearLegacyD
 import { ConfirmDeleteDialog } from './components/entry/ConfirmDeleteDialog';
 import { ConfirmRestoreDialog } from './components/entry/ConfirmRestoreDialog';
 import { EntryDrawer } from './components/entry/EntryDrawer';
+import { ImportCsvDialog } from './components/entry/ImportCsvDialog';
 import { TransactionTable } from './components/ledger/TransactionTable';
+import type {
+  CsvImportPreview,
+  CsvImportResult,
+  DuplicateStrategy,
+} from './domain/csvImport';
 import { parseAndValidateBackupJson } from './domain/ledgerLogic';
 import type {
   CreateTransactionInput,
@@ -77,6 +85,19 @@ export function App() {
     rawJson: string;
   } | null>(null);
   const [clearLegacyOpen, setClearLegacyOpen] = useState(false);
+  const [csvImportState, setCsvImportState] = useState<{
+    open: boolean;
+    fileName: string | null;
+    preview: CsvImportPreview | null;
+    result: CsvImportResult | null;
+    error: string | null;
+  }>({
+    open: false,
+    fileName: null,
+    preview: null,
+    result: null,
+    error: null,
+  });
   const [corruptedDismissed, setCorruptedDismissed] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -104,6 +125,8 @@ export function App() {
   const sampleMutation = useSeedSampleData();
   const importBackupMutation = useImportBackup();
   const clearLegacyMutation = useClearLegacyLocalStorage();
+  const previewCsvMutation = usePreviewCsvImport();
+  const executeCsvMutation = useExecuteCsvImport();
 
   const storageStatus = storageStatusQuery.data;
 
@@ -230,6 +253,49 @@ export function App() {
     } catch (err) {
       setClearLegacyOpen(false);
       setActionError(err instanceof Error ? err.message : 'Unable to clear legacy data');
+    }
+  };
+
+  const handleImportCsvFileSelected = async (file: File) => {
+    setActionError(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      const rawText = new TextDecoder('utf-8').decode(buffer);
+      const preview = await previewCsvMutation.mutateAsync(rawText);
+      setCsvImportState({
+        open: true,
+        fileName: file.name,
+        preview,
+        result: null,
+        error: null,
+      });
+    } catch (err) {
+      setCsvImportState({
+        open: true,
+        fileName: file.name,
+        preview: null,
+        result: null,
+        error: err instanceof Error ? err.message : 'Unable to parse CSV file',
+      });
+    }
+  };
+
+  const handleConfirmCsvImport = async (strategy: DuplicateStrategy) => {
+    if (!csvImportState.preview) return;
+    try {
+      const result = await executeCsvMutation.mutateAsync({
+        preview: csvImportState.preview,
+        strategy,
+      });
+      setCsvImportState((prev) => ({ ...prev, result, error: null }));
+      setToast(
+        `CSV စာရင်းသွင်းပြီးပါပြီ · Imported ${result.insertedCount}, updated ${result.updatedCount}`
+      );
+    } catch (err) {
+      setCsvImportState((prev) => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'CSV import failed',
+      }));
     }
   };
 
@@ -565,6 +631,7 @@ export function App() {
           onEdit={handleOpenEdit}
           onDeleteRequest={setDeleteTarget}
           onExportCsv={handleExportCsv}
+          onImportCsvFile={handleImportCsvFileSelected}
         />
       </main>
 
@@ -604,6 +671,25 @@ export function App() {
         isClearing={clearLegacyMutation.isPending}
         onCancel={() => setClearLegacyOpen(false)}
         onConfirm={handleConfirmClearLegacy}
+      />
+
+      <ImportCsvDialog
+        isOpen={csvImportState.open}
+        fileName={csvImportState.fileName}
+        preview={csvImportState.preview}
+        result={csvImportState.result}
+        error={csvImportState.error}
+        isImporting={executeCsvMutation.isPending}
+        onClose={() =>
+          setCsvImportState({
+            open: false,
+            fileName: null,
+            preview: null,
+            result: null,
+            error: null,
+          })
+        }
+        onConfirmImport={handleConfirmCsvImport}
       />
 
       {toast && (
