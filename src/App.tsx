@@ -7,6 +7,7 @@ import {
   Plus,
   RefreshCw,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Trash2,
   Upload,
@@ -47,6 +48,7 @@ import type {
   DuplicateStrategy,
 } from './domain/csvImport';
 import { parseAndValidateBackupJson } from './domain/ledgerLogic';
+import { usePwaInstall } from './hooks/usePwaInstall';
 import type {
   CreateTransactionInput,
   Transaction,
@@ -127,6 +129,7 @@ export function App() {
   const clearLegacyMutation = useClearLegacyLocalStorage();
   const previewCsvMutation = usePreviewCsvImport();
   const executeCsvMutation = useExecuteCsvImport();
+  const { canInstall, isInstalling, promptInstall } = usePwaInstall();
 
   const storageStatus = storageStatusQuery.data;
 
@@ -484,6 +487,27 @@ export function App() {
                 >
                   <HardDrive size={14} aria-hidden="true" />
                   Use IndexedDB Mode
+                </button>
+              )}
+
+              {canInstall && (
+                <button
+                  type="button"
+                  className="btn btn-secondary storage-badge-btn"
+                  aria-disabled={isInstalling ? 'true' : undefined}
+                  onClick={async () => {
+                    try {
+                      const outcome = await promptInstall();
+                      if (outcome === 'accepted') {
+                        setToast('App ကို Install လုပ်ပြီးပါပြီ · App installed');
+                      }
+                    } catch {
+                      setActionError('Unable to start app installation.');
+                    }
+                  }}
+                >
+                  <Smartphone size={14} aria-hidden="true" />
+                  Install App
                 </button>
               )}
             </div>
