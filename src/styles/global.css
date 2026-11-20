@@ -830,6 +830,43 @@ dialog::backdrop {
   color: var(--text-muted);
 }
 
+/* Storage Mode & Backup Banner */
+.storage-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  padding: 0.75rem 1.15rem;
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+  border: 1px solid var(--blue-sky);
+  color: var(--blue-deep);
+  font-size: 0.875rem;
+}
+
+.storage-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 280px;
+}
+
+.storage-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.storage-badge-btn {
+  min-height: 34px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8125rem;
+  border-radius: 9px;
+}
+
 @media (max-width: 960px) {
   .kpi-grid {
     grid-template-columns: 1fr;

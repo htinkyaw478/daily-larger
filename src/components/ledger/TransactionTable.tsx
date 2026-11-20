@@ -1,6 +1,5 @@
 import { Download, Pencil, Search, Trash2 } from 'lucide-react';
 import { useId } from 'react';
-import { getExportCsvUrl } from '../../api/client';
 import type {
   Category,
   SortOption,
@@ -27,6 +26,7 @@ export function TransactionTable({
   onFiltersChange,
   onEdit,
   onDeleteRequest,
+  onExportCsv,
 }: {
   transactions: Transaction[];
   total: number;
@@ -39,6 +39,7 @@ export function TransactionTable({
   onFiltersChange: (next: Partial<TransactionFilters>) => void;
   onEdit: (tx: Transaction) => void;
   onDeleteRequest: (tx: Transaction) => void;
+  onExportCsv: () => void;
 }) {
   const captionId = useId();
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -55,14 +56,14 @@ export function TransactionTable({
           </p>
         </div>
 
-        <a
-          href={getExportCsvUrl(filters, currency)}
+        <button
+          type="button"
           className="btn btn-secondary"
-          download
+          onClick={onExportCsv}
         >
           <Download size={17} aria-hidden="true" />
           Export CSV
-        </a>
+        </button>
       </div>
 
       <div className="ledger-toolbar">

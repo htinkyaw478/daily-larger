@@ -1,11 +1,29 @@
-import { BookOpen, Plus, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import {
+  AlertTriangle,
+  BookOpen,
+  Database,
+  Download,
+  HardDrive,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Upload,
+} from 'lucide-react';
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import {
+  dismissCorruptedNotice,
+  downloadLocalBackupJson,
+  downloadTransactionsCsv,
+  getSavedCurrencyPreference,
+  saveCurrencyPreference,
   useCategories,
   useCreateTransaction,
   useDashboardSummary,
   useDeleteTransaction,
+  useImportBackup,
   useSeedSampleData,
+  useStorageStatus,
+  useSwitchStorageMode,
   useTransactions,
   useUpdateTransaction,
 } from './api/client';
@@ -13,8 +31,10 @@ import { CashFlowChart } from './components/dashboard/CashFlowChart';
 import { CategoryRing } from './components/dashboard/CategoryRing';
 import { KpiCards } from './components/dashboard/KpiCards';
 import { ConfirmDeleteDialog } from './components/entry/ConfirmDeleteDialog';
+import { ConfirmRestoreDialog } from './components/entry/ConfirmRestoreDialog';
 import { EntryDrawer } from './components/entry/EntryDrawer';
 import { TransactionTable } from './components/ledger/TransactionTable';
+import { parseAndValidateBackupJson } from './domain/ledgerLogic';
 import type {
   CreateTransactionInput,
   Transaction,
@@ -23,18 +43,12 @@ import type {
 import {
   CURRENCY_CONFIGS,
   getPresetDateRange,
-  isCurrencyCode,
   type CurrencyCode,
   type PeriodPreset,
 } from './utils/formatters';
 
-const CURRENCY_STORAGE_KEY = 'daily_ledger_currency';
-
 export function App() {
-  const [currency, setCurrency] = useState<CurrencyCode>(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(CURRENCY_STORAGE_KEY) : null;
-    return isCurrencyCode(saved) ? saved : 'MMK';
-  });
+  const [currency, setCurrency] = useState<CurrencyCode>(() => getSavedCurrencyPreference());
   const [preset, setPreset] = useState<PeriodPreset>('month');
   const [dateRange, setDateRange] = useState(() => getPresetDateRange('month'));
   const [filters, setFilters] = useState<TransactionFilters>({
@@ -46,14 +60,23 @@ export function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<{
+    fileName: string;
+    rawJson: string;
+  } | null>(null);
+  const [corruptedDismissed, setCorruptedDismissed] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3200);
+    const timer = setTimeout(() => setToast(null), 3400);
     return () => clearTimeout(timer);
   }, [toast]);
 
+  const storageStatusQuery = useStorageStatus();
+  const switchModeMutation = useSwitchStorageMode();
   const { data: categories = [] } = useCategories();
   const dashboardQuery = useDashboardSummary(dateRange.from, dateRange.to);
   const transactionsQuery = useTransactions({
@@ -66,12 +89,13 @@ export function App() {
   const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
   const sampleMutation = useSeedSampleData();
+  const importBackupMutation = useImportBackup();
+
+  const storageStatus = storageStatusQuery.data;
 
   const handleCurrencyChange = (nextCurrency: CurrencyCode) => {
     setCurrency(nextCurrency);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CURRENCY_STORAGE_KEY, nextCurrency);
-    }
+    saveCurrencyPreference(nextCurrency);
   };
 
   const handlePresetChange = (nextPreset: Exclude<PeriodPreset, 'custom'>) => {
@@ -91,6 +115,7 @@ export function App() {
   };
 
   const handleSaveEntry = async (payload: CreateTransactionInput, keepOpen: boolean) => {
+    setActionError(null);
     if (editingTx) {
       await updateMutation.mutateAsync({ id: editingTx.id, input: payload });
       setDrawerOpen(false);
@@ -107,18 +132,84 @@ export function App() {
   };
 
   const handleConfirmDelete = async (id: number) => {
-    await deleteMutation.mutateAsync(id);
-    setDeleteTarget(null);
-    setToast('စာရင်း ဖျက်ပြီးပါပြီ · Entry removed');
+    setActionError(null);
+    try {
+      await deleteMutation.mutateAsync(id);
+      setDeleteTarget(null);
+      setToast('စာရင်း ဖျက်ပြီးပါပြီ · Entry removed');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Unable to delete entry');
+    }
   };
 
   const handleLoadSample = async () => {
-    await sampleMutation.mutateAsync();
-    setToast('နမူနာ စာရင်းများ ထည့်သွင်းပြီးပါပြီ · Sample data loaded');
+    setActionError(null);
+    try {
+      const res = await sampleMutation.mutateAsync();
+      setToast(
+        res.inserted > 0
+          ? 'နမူနာ စာရင်းများ ထည့်သွင်းပြီးပါပြီ · Sample data loaded'
+          : res.message
+      );
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Unable to load sample data');
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setActionError(null);
+    try {
+      await downloadTransactionsCsv(
+        { ...filters, from: dateRange.from, to: dateRange.to },
+        currency
+      );
+      setToast('CSV ဖိုင် ထုတ်ယူပြီးပါပြီ · CSV exported');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'CSV export failed');
+    }
+  };
+
+  const handleBackupDownload = () => {
+    setActionError(null);
+    try {
+      downloadLocalBackupJson();
+      setToast('Backup JSON သိမ်းဆည်းပြီးပါပြီ · Backup downloaded');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Backup download failed');
+    }
+  };
+
+  const handleBackupFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setActionError(null);
+    try {
+      const rawJson = await file.text();
+      parseAndValidateBackupJson(rawJson);
+      setPendingRestore({ fileName: file.name, rawJson });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Invalid backup file');
+    }
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!pendingRestore) return;
+    setActionError(null);
+    try {
+      const result = await importBackupMutation.mutateAsync(pendingRestore.rawJson);
+      setPendingRestore(null);
+      setToast(`Backup ပြန်သွင်းပြီးပါပြီ · Restored ${result.restoredCount} entries`);
+    } catch (err) {
+      setPendingRestore(null);
+      setActionError(err instanceof Error ? err.message : 'Failed to restore backup');
+    }
   };
 
   const summary = dashboardQuery.data;
   const showEmptyOnboarding = summary && !summary.hasAnyTransactions;
+  const isLocalMode = storageStatus?.mode === 'local';
 
   return (
     <div className="app-shell">
@@ -188,7 +279,120 @@ export function App() {
       </header>
 
       <main>
-        {dashboardQuery.isError && (
+        {storageStatus && (
+          <section className="storage-banner" aria-label="Storage Mode">
+            <div className="storage-banner-info">
+              {isLocalMode ? (
+                <HardDrive size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
+              ) : (
+                <Database size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
+              )}
+              <span>
+                {isLocalMode ? (
+                  <>
+                    <strong>Local Storage Mode:</strong> စာရင်းများကို ဤ Browser ထဲတွင်သာ သိမ်းဆည်းထားပါသည် (Device များကြား sync မဖြစ်ပါ) — Backup Export လုပ်ထားနိုင်ပါသည်။
+                  </>
+                ) : (
+                  <>
+                    <strong>PostgreSQL API Mode:</strong> Connected to server database.
+                  </>
+                )}
+              </span>
+            </div>
+
+            <div className="storage-banner-actions">
+              {isLocalMode && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary storage-badge-btn"
+                    onClick={handleBackupDownload}
+                  >
+                    <Download size={14} aria-hidden="true" />
+                    Backup JSON
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary storage-badge-btn"
+                    onClick={() => restoreInputRef.current?.click()}
+                  >
+                    <Upload size={14} aria-hidden="true" />
+                    Restore JSON
+                  </button>
+                  <input
+                    ref={restoreInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="visually-hidden"
+                    aria-label="Choose backup JSON file"
+                    onChange={handleBackupFileSelected}
+                  />
+                </>
+              )}
+
+              {isLocalMode && storageStatus.apiConfigured && (
+                <button
+                  type="button"
+                  className="btn btn-secondary storage-badge-btn"
+                  disabled={switchModeMutation.isPending}
+                  onClick={() => switchModeMutation.mutate('api')}
+                >
+                  <RefreshCw size={14} aria-hidden="true" />
+                  {switchModeMutation.isPending ? 'Checking...' : 'Retry API'}
+                </button>
+              )}
+
+              {!isLocalMode && (
+                <button
+                  type="button"
+                  className="btn btn-secondary storage-badge-btn"
+                  disabled={switchModeMutation.isPending}
+                  onClick={() => switchModeMutation.mutate('local')}
+                >
+                  <HardDrive size={14} aria-hidden="true" />
+                  Use Local Mode
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {storageStatus?.corruptedRecoveryKey && !corruptedDismissed && (
+          <div
+            role="alert"
+            className="card"
+            style={{
+              marginBottom: '1.25rem',
+              borderColor: 'var(--expense-fg)',
+              background: 'var(--expense-bg)',
+              color: 'var(--expense-fg)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <AlertTriangle size={18} aria-hidden="true" />
+              <span>
+                Corrupted browser data was detected and safely preserved under{' '}
+                <code>{storageStatus.corruptedRecoveryKey}</code>.
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary storage-badge-btn"
+              onClick={() => {
+                dismissCorruptedNotice();
+                setCorruptedDismissed(true);
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {(dashboardQuery.isError || actionError) && (
           <div
             role="alert"
             className="card"
@@ -199,7 +403,10 @@ export function App() {
               color: 'var(--expense-fg)',
             }}
           >
-            Unable to connect to the Daily Ledger API. Make sure the backend server and PostgreSQL database are running.
+            {actionError ??
+              (dashboardQuery.error instanceof Error
+                ? dashboardQuery.error.message
+                : 'Unable to load ledger data.')}
           </div>
         )}
 
@@ -260,6 +467,7 @@ export function App() {
           onFiltersChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
           onEdit={handleOpenEdit}
           onDeleteRequest={setDeleteTarget}
+          onExportCsv={handleExportCsv}
         />
       </main>
 
@@ -283,6 +491,14 @@ export function App() {
         isDeleting={deleteMutation.isPending}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      <ConfirmRestoreDialog
+        fileName={pendingRestore?.fileName ?? null}
+        existingCount={storageStatus?.localTransactionCount ?? 0}
+        isRestoring={importBackupMutation.isPending}
+        onCancel={() => setPendingRestore(null)}
+        onConfirm={handleConfirmRestore}
       />
 
       {toast && (
