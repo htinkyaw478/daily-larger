@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { DEFAULT_CATEGORIES } from '../../domain/ledgerLogic';
 import { useI18n } from '../../i18n/I18nContext';
@@ -38,6 +38,7 @@ export function EntryDrawer({
   onCurrencyChange,
   isSaving,
   onClose,
+  onBackToHome,
   onSubmit,
 }: {
   isOpen: boolean;
@@ -48,6 +49,7 @@ export function EntryDrawer({
   onCurrencyChange: (next: CurrencyCode) => void;
   isSaving: boolean;
   onClose: () => void;
+  onBackToHome?: () => void;
   onSubmit: (payload: CreateTransactionInput, keepOpen: boolean) => Promise<void>;
 }) {
   const { language, t } = useI18n();
@@ -244,6 +246,14 @@ export function EntryDrawer({
     }
   };
 
+  const handleBackNavigation = () => {
+    if (onBackToHome) {
+      onBackToHome();
+    } else {
+      dialogRef.current?.close();
+    }
+  };
+
   return (
     <dialog
       ref={dialogRef}
@@ -251,21 +261,21 @@ export function EntryDrawer({
       aria-labelledby={titleId}
       {...({ closedby: 'any' } as Record<string, unknown>)}
     >
-      <div className="dialog-header">
-        <div>
+      <div className="dialog-header entry-dialog-header">
+        <button
+          type="button"
+          className="entry-back-btn"
+          aria-label={t.entry.backAria}
+          onClick={handleBackNavigation}
+        >
+          <ArrowLeft size={22} aria-hidden="true" />
+        </button>
+        <div className="entry-header-text">
           <h2 id={titleId} className="card-title">
             {editingTx ? t.entry.editTitle : t.entry.addTitle}
           </h2>
           <p className="card-caption">{t.entry.subtitle}</p>
         </div>
-        <button
-          type="button"
-          className="btn-ghost"
-          aria-label={t.entry.closeAria}
-          onClick={() => dialogRef.current?.close()}
-        >
-          <X size={20} aria-hidden="true" />
-        </button>
       </div>
 
       <form
@@ -458,7 +468,11 @@ export function EntryDrawer({
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+          <div
+            className={`entry-footer-actions${
+              editingTx ? ' entry-footer-actions--single' : ''
+            }`}
+          >
             <button type="submit" className="btn btn-primary" disabled={isSaving}>
               {isSaving
                 ? t.entry.saving

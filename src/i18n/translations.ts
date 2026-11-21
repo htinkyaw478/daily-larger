@@ -122,6 +122,7 @@ export interface Translations {
     editTitle: string;
     subtitle: string;
     closeAria: string;
+    backAria: string;
     typeLegend: string;
     expense: string;
     income: string;
@@ -386,6 +387,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       editTitle: 'စာရင်း ပြင်ဆင်ရန်',
       subtitle: 'စာရင်းထဲသို့ တိုက်ရိုက်သိမ်းဆည်းပြီး စုစုပေါင်းကို တွက်ချက်ပေးပါမည်',
       closeAria: 'စာရင်းဖောင် ပိတ်ရန်',
+      backAria: 'ပင်မစာမျက်နှာသို့ ပြန်သွားရန်',
       typeLegend: 'စာရင်းအမျိုးအစား',
       expense: 'ထွက်ငွေ',
       income: 'ဝင်ငွေ',
@@ -402,7 +404,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       saving: 'သိမ်းဆည်းနေသည်...',
       save: 'သိမ်းမည်',
       update: 'ပြင်ဆင်မှု သိမ်းမည်',
-      saveAndAnother: 'သိမ်းပြီး နောက်တစ်ခု ထပ်ထည့်မည်',
+      saveAndAnother: 'သိမ်းပြီး ထပ်ထည့်မည်',
       saveFailed: 'စာရင်းသိမ်းဆည်း၍ မရပါ။',
     },
     dialogs: {
@@ -658,6 +660,7 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       editTitle: 'Edit Entry',
       subtitle: 'Saves directly to your ledger and updates totals',
       closeAria: 'Close entry form',
+      backAria: 'Back to Home',
       typeLegend: 'Transaction type',
       expense: 'Expense',
       income: 'Income',

@@ -226,6 +226,12 @@ export function App() {
     setDrawerOpen(true);
   };
 
+  const handleEntryBackToHome = useCallback(() => {
+    setDrawerOpen(false);
+    setEditingTx(null);
+    handleNavigate('home');
+  }, [handleNavigate]);
+
   const handleSaveEntry = async (payload: CreateTransactionInput, keepOpen: boolean) => {
     setActionError(null);
     if (editingTx) {
@@ -511,6 +517,7 @@ export function App() {
           setDrawerOpen(false);
           setEditingTx(null);
         }}
+        onBackToHome={handleEntryBackToHome}
         onSubmit={handleSaveEntry}
       />
 

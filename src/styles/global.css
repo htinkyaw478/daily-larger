@@ -1255,6 +1255,83 @@ dialog::backdrop {
   background: linear-gradient(180deg, var(--surface-tint) 0%, var(--surface-elevated) 100%);
 }
 
+.entry-dialog-header {
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.entry-back-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  margin-inline-start: -0.55rem;
+  margin-block-start: -0.35rem;
+  padding: 0.45rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-brand);
+  cursor: pointer;
+  transition: color 0.16s ease, transform 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.entry-back-btn:not(:focus-visible) {
+  outline: 0;
+}
+
+.entry-back-btn:hover {
+  background: transparent;
+  border: 0;
+  color: var(--accent-primary);
+}
+
+.entry-back-btn:active {
+  background: transparent;
+  border: 0;
+  transform: scale(0.94);
+}
+
+.entry-back-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.entry-header-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.entry-footer-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.entry-footer-actions--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.entry-footer-actions .btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0.55rem 0.65rem;
+  font-size: clamp(0.76rem, 3.2vw, 0.9rem);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .dialog-body {
   padding: 1.25rem 1.35rem 1.5rem;
   overflow-y: auto;
@@ -1731,9 +1808,20 @@ dialog.import-dialog[open] {
     border: 0;
   }
 
-  dialog.entry-dialog .dialog-header,
   dialog.import-dialog .dialog-header {
     padding-top: max(1.1rem, env(safe-area-inset-top));
+  }
+
+  dialog.entry-dialog .dialog-header {
+    padding: max(0.95rem, env(safe-area-inset-top)) 1rem 0.9rem;
+  }
+
+  dialog.entry-dialog .dialog-body {
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  dialog.entry-dialog .dialog-footer {
+    padding: 0.75rem 1rem max(0.85rem, env(safe-area-inset-bottom));
   }
 
   .dialog-footer .btn {
@@ -1742,6 +1830,17 @@ dialog.import-dialog[open] {
 
   .category-pill-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .entry-footer-actions {
+    gap: 0.5rem;
+  }
+
+  .entry-footer-actions .btn {
+    padding-inline: 0.42rem;
+    font-size: clamp(0.71rem, 3.2vw, 0.84rem);
   }
 }
 
@@ -1755,6 +1854,7 @@ dialog.import-dialog[open] {
 
   .app-frame,
   .btn,
+  .entry-back-btn,
   .period-pill,
   .ring-segment,
   .sidebar-nav-item,
