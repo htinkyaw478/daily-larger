@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   BarChart3,
   BookOpen,
   Globe,
@@ -18,6 +19,14 @@ import type { PeriodPreset } from '../../utils/formatters';
 
 export type AppPage = 'home' | 'ledger' | 'analytics' | 'settings';
 
+export function parsePageFromHash(hash: string): AppPage {
+  const cleaned = hash.replace(/^#\/?/, '').trim().toLowerCase();
+  if (cleaned === 'ledger' || cleaned === 'analytics' || cleaned === 'settings') {
+    return cleaned;
+  }
+  return 'home';
+}
+
 interface NavItem {
   id: AppPage;
   label: string;
@@ -26,6 +35,7 @@ interface NavItem {
 
 export function AppLayout({
   activePage,
+  isAddEntryOpen = false,
   onNavigate,
   sidebarCollapsed,
   onToggleSidebar,
@@ -37,6 +47,7 @@ export function AppLayout({
   children,
 }: {
   activePage: AppPage;
+  isAddEntryOpen?: boolean;
   onNavigate: (page: AppPage) => void;
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
@@ -48,6 +59,7 @@ export function AppLayout({
   children: ReactNode;
 }) {
   const { language, setLanguage, t } = useI18n();
+  const showMobileBottomNav = activePage === 'home' && !isAddEntryOpen;
 
   const navItems: NavItem[] = [
     { id: 'home', label: t.nav.home, icon: Home },
@@ -67,7 +79,11 @@ export function AppLayout({
   const showPeriodSelector = activePage !== 'settings';
 
   return (
-    <div className={`app-frame ${sidebarCollapsed ? 'app-frame--collapsed' : ''}`}>
+    <div
+      className={`app-frame${sidebarCollapsed ? ' app-frame--collapsed' : ''}${
+        showMobileBottomNav ? ' app-frame--with-bottom-nav' : ''
+      }`}
+    >
       <a href="#main-content" className="visually-hidden skip-link">
         {t.app.skipToContent}
       </a>
@@ -145,9 +161,20 @@ export function AppLayout({
       <div className="app-main-wrap">
         <header className="main-topbar">
           <div className="topbar-heading-group">
-            <div className="mobile-brand-dot" aria-hidden="true">
-              <BookOpen size={18} />
-            </div>
+            {activePage === 'home' ? (
+              <div className="mobile-brand-dot" aria-hidden="true">
+                <BookOpen size={18} />
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="mobile-topbar-back"
+                aria-label={t.entry.backAria}
+                onClick={() => onNavigate('home')}
+              >
+                <ArrowLeft size={21} aria-hidden="true" />
+              </button>
+            )}
             <div>
               <h1 className="topbar-title">{currentMeta.title}</h1>
               <p className="topbar-subtitle">{currentMeta.subtitle}</p>
@@ -230,27 +257,29 @@ export function AppLayout({
         </main>
       </div>
 
-      {/* Fixed Mobile Bottom Navigation Bar */}
-      <nav className="mobile-bottom-nav" aria-label={t.nav.primaryLabel}>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className="mobile-bottom-nav-item"
-              aria-current={isActive ? 'page' : undefined}
-              onClick={() => onNavigate(item.id)}
-            >
-              <span className="mobile-nav-pill">
-                <Icon size={20} aria-hidden="true" />
-              </span>
-              <span className="mobile-nav-label">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* Fixed Mobile Bottom Navigation Bar (Home only) */}
+      {showMobileBottomNav && (
+        <nav className="mobile-bottom-nav" aria-label={t.nav.primaryLabel}>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activePage === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className="mobile-bottom-nav-item"
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => onNavigate(item.id)}
+              >
+                <span className="mobile-nav-pill">
+                  <Icon size={20} aria-hidden="true" />
+                </span>
+                <span className="mobile-nav-label">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }

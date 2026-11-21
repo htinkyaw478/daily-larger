@@ -25,7 +25,7 @@ import { ConfirmDeleteDialog } from './components/entry/ConfirmDeleteDialog';
 import { ConfirmRestoreDialog } from './components/entry/ConfirmRestoreDialog';
 import { EntryDrawer } from './components/entry/EntryDrawer';
 import { ImportCsvDialog } from './components/entry/ImportCsvDialog';
-import { AppLayout, type AppPage } from './components/layout/AppLayout';
+import { AppLayout, parsePageFromHash, type AppPage } from './components/layout/AppLayout';
 import { TransactionTable } from './components/ledger/TransactionTable';
 import { AnalyticsPage } from './components/pages/AnalyticsPage';
 import { HomePage } from './components/pages/HomePage';
@@ -57,14 +57,6 @@ import {
   type CurrencyCode,
   type PeriodPreset,
 } from './utils/formatters';
-
-function parsePageFromHash(hash: string): AppPage {
-  const cleaned = hash.replace(/^#\/?/, '').trim().toLowerCase();
-  if (cleaned === 'ledger' || cleaned === 'analytics' || cleaned === 'settings') {
-    return cleaned;
-  }
-  return 'home';
-}
 
 export function App() {
   const { theme, setTheme } = useTheme();
@@ -139,6 +131,8 @@ export function App() {
 
   useEffect(() => {
     const handleHashChange = () => {
+      setDrawerOpen(false);
+      setEditingTx(null);
       setActivePage(parsePageFromHash(window.location.hash));
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -401,6 +395,7 @@ export function App() {
     <I18nContext.Provider value={i18nValue}>
       <AppLayout
         activePage={activePage}
+        isAddEntryOpen={drawerOpen}
         onNavigate={handleNavigate}
         sidebarCollapsed={sidebarCollapsed}
         onToggleSidebar={handleToggleSidebar}

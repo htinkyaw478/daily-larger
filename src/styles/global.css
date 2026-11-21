@@ -288,6 +288,10 @@ h3,
   flex-shrink: 0;
 }
 
+.mobile-topbar-back {
+  display: none;
+}
+
 .topbar-title {
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   line-height: 1.2;
@@ -1685,6 +1689,44 @@ dialog.import-dialog[open] {
     display: grid;
   }
 
+  .mobile-topbar-back {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-inline-size: 44px;
+    min-block-size: 44px;
+    margin-inline: -0.55rem -0.25rem;
+    padding: 0.45rem;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-brand);
+    cursor: pointer;
+    transition: color 0.16s ease, transform 0.14s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-topbar-back:not(:focus-visible) {
+    outline: 0;
+  }
+
+  .mobile-topbar-back:hover {
+    color: var(--accent-primary);
+  }
+
+  .mobile-topbar-back:active {
+    transform: scale(0.94);
+  }
+
+  .mobile-topbar-back:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
   .mobile-topbar-add {
     display: inline-flex;
   }
@@ -1704,7 +1746,11 @@ dialog.import-dialog[open] {
   }
 
   .app-main-content {
-    padding: 1rem 1rem calc(5.75rem + env(safe-area-inset-bottom));
+    padding: 1rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .app-frame--with-bottom-nav .app-main-content {
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
   }
 
   /* Switch desktop table -> mobile compact progressive rows */
@@ -1778,8 +1824,12 @@ dialog.import-dialog[open] {
   .toast-banner {
     left: 1rem;
     right: 1rem;
-    bottom: calc(5.2rem + env(safe-area-inset-bottom));
+    bottom: calc(1.25rem + env(safe-area-inset-bottom));
     text-align: center;
+  }
+
+  .app-frame--with-bottom-nav .toast-banner {
+    bottom: calc(5.2rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -1855,6 +1905,7 @@ dialog.import-dialog[open] {
   .app-frame,
   .btn,
   .entry-back-btn,
+  .mobile-topbar-back,
   .period-pill,
   .ring-segment,
   .sidebar-nav-item,
