@@ -33,8 +33,8 @@
   --scrollbar-thumb: #90caf9;
 
   /* Typography */
-  --font-display: 'DM Serif Display', 'Noto Sans Myanmar', Georgia, serif;
-  --font-sans: 'DM Sans', 'Noto Sans Myanmar', system-ui, -apple-system, sans-serif;
+  --font-display: 'DM Serif Display', 'Noto Sans Myanmar', 'Apple SD Gothic Neo', 'Hiragino Sans', Georgia, serif;
+  --font-sans: 'DM Sans', 'Noto Sans Myanmar', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Meiryo', system-ui, -apple-system, sans-serif;
 
   /* Elevation & Radii */
   --radius-sm: 10px;

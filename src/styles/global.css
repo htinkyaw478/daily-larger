@@ -322,6 +322,35 @@ h3,
   font-size: 0.84rem;
 }
 
+.topbar-lang-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.topbar-lang-icon {
+  position: absolute;
+  left: 0.65rem;
+  color: var(--text-brand);
+  pointer-events: none;
+}
+
+.control-select.topbar-lang-select {
+  min-height: 40px;
+  padding: 0.35rem 0.65rem 0.35rem 2.05rem;
+  border-radius: 12px;
+  border-color: var(--blue-sky);
+  background: var(--surface-elevated);
+  color: var(--text-brand);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.control-select.topbar-lang-select:hover {
+  background: var(--surface-hover);
+}
+
 .mobile-topbar-add {
   display: none;
   min-height: 40px;

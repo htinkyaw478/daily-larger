@@ -151,6 +151,30 @@ export function SettingsPage({
             <Globe size={16} aria-hidden="true" />
             <span>{t.settings.englishLabel}</span>
           </label>
+          <label className="segmented-option">
+            <input
+              type="radio"
+              name="app-language"
+              value="ko"
+              checked={language === 'ko'}
+              onChange={() => setLanguage('ko')}
+              className="visually-hidden"
+            />
+            <Globe size={16} aria-hidden="true" />
+            <span>{t.settings.koreanLabel}</span>
+          </label>
+          <label className="segmented-option">
+            <input
+              type="radio"
+              name="app-language"
+              value="ja"
+              checked={language === 'ja'}
+              onChange={() => setLanguage('ja')}
+              className="visually-hidden"
+            />
+            <Globe size={16} aria-hidden="true" />
+            <span>{t.settings.japaneseLabel}</span>
+          </label>
         </fieldset>
       </section>
 

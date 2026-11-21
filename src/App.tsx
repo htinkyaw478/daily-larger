@@ -39,7 +39,7 @@ import { parseAndValidateBackupJson } from './domain/ledgerLogic';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import { useTheme } from './hooks/useTheme';
 import { I18nContext } from './i18n/I18nContext';
-import { TRANSLATIONS, type LanguageCode } from './i18n/translations';
+import { isLanguageCode, TRANSLATIONS, type LanguageCode } from './i18n/translations';
 import {
   getSavedLanguagePreference,
   getSavedSidebarCollapsed,
@@ -121,7 +121,7 @@ export function App() {
 
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'daily_ledger_language' && (e.newValue === 'my' || e.newValue === 'en')) {
+      if (e.key === 'daily_ledger_language' && isLanguageCode(e.newValue)) {
         setLanguageState(e.newValue);
       }
     };

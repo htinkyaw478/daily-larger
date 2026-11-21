@@ -263,7 +263,7 @@ export function CashFlowChart({
                   textAnchor="middle"
                   fontSize="11"
                   fill="var(--chart-axis)"
-                  fontFamily="DM Sans, Noto Sans Myanmar, sans-serif"
+                  fontFamily="var(--font-sans)"
                 >
                   {formatLocalizedShortDate(d.date, language)}
                 </text>

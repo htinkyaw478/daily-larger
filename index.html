@@ -21,7 +21,7 @@
           var tcMeta = document.querySelector('meta[name="theme-color"]');
           if (tcMeta) tcMeta.setAttribute('content', theme === 'dark' ? '#0B1220' : '#2196F3');
           var savedLang = localStorage.getItem('daily_ledger_language');
-          if (savedLang === 'en' || savedLang === 'my') {
+          if (savedLang === 'en' || savedLang === 'my' || savedLang === 'ko' || savedLang === 'ja') {
             document.documentElement.lang = savedLang;
           }
         } catch (e) {}

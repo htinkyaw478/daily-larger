@@ -3,7 +3,7 @@ import type {
   CsvImportResult,
   DuplicateStrategy,
 } from '../domain/csvImport';
-import type { LanguageCode } from '../i18n/translations';
+import { isLanguageCode, type LanguageCode } from '../i18n/translations';
 import type {
   Category,
   CreateTransactionInput,
@@ -129,7 +129,7 @@ export function saveThemePreference(theme: ThemeMode): void {
 
 export function getSavedLanguagePreference(): LanguageCode {
   const saved = safeGetItem(LANGUAGE_STORAGE_KEY);
-  return saved === 'en' || saved === 'my' ? saved : 'my';
+  return isLanguageCode(saved) ? saved : 'my';
 }
 
 export function saveLanguagePreference(language: LanguageCode): void {

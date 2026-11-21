@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useI18n } from '../../i18n/I18nContext';
+import type { LanguageCode } from '../../i18n/translations';
 import type { ThemeMode } from '../../storage/ledgerStorage';
 import type { PeriodPreset } from '../../utils/formatters';
 
@@ -212,16 +213,21 @@ export function AppLayout({
             )}
 
             <div className="topbar-quick-switches">
-              <button
-                type="button"
-                className="btn btn-secondary icon-pill-btn"
-                aria-label={t.settings.languageLabel}
-                title={t.settings.languageLabel}
-                onClick={() => setLanguage(language === 'my' ? 'en' : 'my')}
-              >
-                <Globe size={16} aria-hidden="true" />
-                <span>{language === 'my' ? 'မြန်မာ' : 'EN'}</span>
-              </button>
+              <div className="topbar-lang-wrap">
+                <Globe size={15} className="topbar-lang-icon" aria-hidden="true" />
+                <select
+                  aria-label={t.settings.languageLabel}
+                  title={t.settings.languageLabel}
+                  className="control-select topbar-lang-select"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+                >
+                  <option value="my">{t.settings.burmeseLabel}</option>
+                  <option value="en">{t.settings.englishLabel}</option>
+                  <option value="ko">{t.settings.koreanLabel}</option>
+                  <option value="ja">{t.settings.japaneseLabel}</option>
+                </select>
+              </div>
 
               <button
                 type="button"
