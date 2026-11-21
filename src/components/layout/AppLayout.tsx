@@ -2,6 +2,8 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  Check,
+  ChevronDown,
   Globe,
   Home,
   ListOrdered,
@@ -12,7 +14,7 @@ import {
   Settings,
   Sun,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/I18nContext';
 import type { LanguageCode } from '../../i18n/translations';
 import type { ThemeMode } from '../../storage/ledgerStorage';
@@ -61,6 +63,46 @@ export function AppLayout({
 }) {
   const { language, setLanguage, t } = useI18n();
   const showMobileBottomNav = activePage === 'home' && !isAddEntryOpen;
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const periodWrapRef = useRef<HTMLDivElement>(null);
+  const periodTriggerRef = useRef<HTMLButtonElement>(null);
+  const periodMenuId = useId();
+
+  useEffect(() => {
+    setPeriodMenuOpen(false);
+  }, [activePage]);
+
+  useEffect(() => {
+    if (!periodMenuOpen) return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (periodWrapRef.current && !periodWrapRef.current.contains(e.target as Node)) {
+        setPeriodMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPeriodMenuOpen(false);
+        periodTriggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [periodMenuOpen]);
+
+  const periodOptions: Array<{ id: Exclude<PeriodPreset, 'custom'>; label: string }> = [
+    { id: 'today', label: t.periods.today },
+    { id: 'week', label: t.periods.week },
+    { id: 'month', label: t.periods.month },
+  ];
+
+  const activePeriodLabel =
+    periodOptions.find((opt) => opt.id === preset)?.label ?? t.periods.month;
 
   const navItems: NavItem[] = [
     { id: 'home', label: t.nav.home, icon: Home },
@@ -161,58 +203,69 @@ export function AppLayout({
       {/* Independent Main Content Area */}
       <div className="app-main-wrap">
         <header className="main-topbar">
-          <div className="topbar-heading-group">
-            {activePage === 'home' ? (
-              <div className="mobile-brand-dot" aria-hidden="true">
-                <BookOpen size={18} />
+          <div className="topbar-header-row">
+            <div className="topbar-heading-group">
+              {activePage === 'home' ? (
+                <div className="mobile-brand-dot" aria-hidden="true">
+                  <BookOpen size={18} />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="mobile-topbar-back"
+                  aria-label={t.entry.backAria}
+                  onClick={() => onNavigate('home')}
+                >
+                  <ArrowLeft size={21} aria-hidden="true" />
+                </button>
+              )}
+              <div>
+                <h1 className="topbar-title">{currentMeta.title}</h1>
+                <p className="topbar-subtitle">{currentMeta.subtitle}</p>
               </div>
-            ) : (
-              <button
-                type="button"
-                className="mobile-topbar-back"
-                aria-label={t.entry.backAria}
-                onClick={() => onNavigate('home')}
-              >
-                <ArrowLeft size={21} aria-hidden="true" />
-              </button>
-            )}
-            <div>
-              <h1 className="topbar-title">{currentMeta.title}</h1>
-              <p className="topbar-subtitle">{currentMeta.subtitle}</p>
             </div>
+
+            <button
+              type="button"
+              className="btn btn-secondary icon-pill-btn topbar-theme-btn topbar-theme-btn--mobile"
+              aria-label={theme === 'dark' ? t.settings.lightMode : t.settings.darkMode}
+              title={theme === 'dark' ? t.settings.lightMode : t.settings.darkMode}
+              onClick={onToggleTheme}
+            >
+              {theme === 'dark' ? (
+                <Sun size={17} aria-hidden="true" />
+              ) : (
+                <Moon size={17} aria-hidden="true" />
+              )}
+            </button>
           </div>
 
           <div className="topbar-controls">
             {showPeriodSelector && (
-              <div className="period-pills" role="group" aria-label={t.periods.groupLabel}>
-                <button
-                  type="button"
-                  className="period-pill"
-                  aria-pressed={preset === 'today'}
-                  onClick={() => onPresetChange('today')}
-                >
-                  {t.periods.today}
-                </button>
-                <button
-                  type="button"
-                  className="period-pill"
-                  aria-pressed={preset === 'week'}
-                  onClick={() => onPresetChange('week')}
-                >
-                  {t.periods.week}
-                </button>
-                <button
-                  type="button"
-                  className="period-pill"
-                  aria-pressed={preset === 'month'}
-                  onClick={() => onPresetChange('month')}
-                >
-                  {t.periods.month}
-                </button>
+              <div
+                className="period-pills period-pills--desktop"
+                role="group"
+                aria-label={t.periods.groupLabel}
+              >
+                {periodOptions.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className="period-pill"
+                    aria-pressed={preset === opt.id}
+                    onClick={() => onPresetChange(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             )}
 
-            <div className="topbar-quick-switches">
+            <div
+              className={`topbar-quick-switches${
+                !showPeriodSelector ? ' topbar-quick-switches--no-period' : ''
+              }`}
+            >
               <div className="topbar-lang-wrap">
                 <Globe size={15} className="topbar-lang-icon" aria-hidden="true" />
                 <select
@@ -231,7 +284,7 @@ export function AppLayout({
 
               <button
                 type="button"
-                className="btn btn-secondary icon-pill-btn"
+                className="btn btn-secondary icon-pill-btn topbar-theme-btn topbar-theme-btn--desktop"
                 aria-label={
                   theme === 'dark' ? t.settings.lightMode : t.settings.darkMode
                 }
@@ -251,9 +304,58 @@ export function AppLayout({
                 onClick={onOpenAdd}
                 aria-label={t.nav.addEntry}
               >
-                <Plus size={17} aria-hidden="true" />
+                <Plus size={16} aria-hidden="true" />
                 <span>{t.nav.addEntry}</span>
               </button>
+
+              {showPeriodSelector && (
+                <div ref={periodWrapRef} className="mobile-period-wrap">
+                  <button
+                    ref={periodTriggerRef}
+                    type="button"
+                    className="btn btn-secondary mobile-period-btn"
+                    aria-expanded={periodMenuOpen}
+                    aria-controls={periodMenuId}
+                    aria-label={t.periods.groupLabel}
+                    onClick={() => setPeriodMenuOpen((prev) => !prev)}
+                  >
+                    <span className="mobile-period-label">{activePeriodLabel}</span>
+                    <ChevronDown
+                      size={15}
+                      className={`mobile-period-chevron${periodMenuOpen ? ' is-open' : ''}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {periodMenuOpen && (
+                    <div
+                      id={periodMenuId}
+                      className="mobile-period-dropdown"
+                      role="group"
+                      aria-label={t.periods.groupLabel}
+                    >
+                      {periodOptions.map((opt) => {
+                        const isSelected = preset === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className="mobile-period-option"
+                            aria-pressed={isSelected}
+                            onClick={() => {
+                              onPresetChange(opt.id);
+                              setPeriodMenuOpen(false);
+                            }}
+                          >
+                            <span>{opt.label}</span>
+                            {isSelected && <Check size={15} aria-hidden="true" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </header>

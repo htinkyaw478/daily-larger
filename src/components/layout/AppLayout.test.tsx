@@ -70,4 +70,26 @@ describe('Requirement 06 — Mobile Bottom Navigation Visibility & Routing', () 
     expect(backOnHome).toContain('class="mobile-bottom-nav"');
     expect(backOnHome).toContain('app-frame app-frame--with-bottom-nav');
   });
+
+  it('integrates header theme toggle and 3 horizontal mobile actions (Language, New Entry, Time Period)', () => {
+    const html = renderLayout('home', false);
+    expect(html).toContain('topbar-header-row');
+    expect(html).toContain('topbar-theme-btn--mobile');
+    expect(html).toContain('period-pills--desktop');
+    expect(html).toContain('mobile-period-wrap');
+    expect(html).toContain('mobile-period-btn');
+    expect(html).toContain('>This Month</span>');
+    expect(html).toContain('lucide-chevron-down');
+
+    const langIdx = html.indexOf('topbar-lang-wrap');
+    const addIdx = html.indexOf('mobile-topbar-add');
+    const periodIdx = html.indexOf('mobile-period-wrap');
+    expect(langIdx).toBeGreaterThan(-1);
+    expect(addIdx).toBeGreaterThan(langIdx);
+    expect(periodIdx).toBeGreaterThan(addIdx);
+
+    const settingsHtml = renderLayout('settings', false);
+    expect(settingsHtml).toContain('topbar-quick-switches--no-period');
+    expect(settingsHtml).not.toContain('mobile-period-wrap');
+  });
 });

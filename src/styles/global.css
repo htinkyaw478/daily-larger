@@ -270,6 +270,19 @@ h3,
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.topbar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.topbar-theme-btn--mobile,
+.mobile-period-wrap {
+  display: none;
+}
+
 .topbar-heading-group {
   display: flex;
   align-items: center;
@@ -1756,13 +1769,38 @@ dialog.import-dialog[open] {
     border-radius: 6px;
   }
 
+  .topbar-header-row {
+    width: 100%;
+  }
+
+  .topbar-theme-btn--mobile {
+    display: inline-flex;
+    flex-shrink: 0;
+    min-width: 40px;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .period-pills--desktop,
+  .topbar-theme-btn--desktop {
+    display: none;
+  }
+
   .mobile-topbar-add {
     display: inline-flex;
+    min-width: 0;
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    gap: 0.3rem;
+    font-size: clamp(0.74rem, 3.2vw, 0.84rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .main-topbar {
     padding: 0.75rem 1rem;
     padding-top: max(0.75rem, env(safe-area-inset-top));
+    gap: 0.65rem;
   }
 
   .topbar-subtitle {
@@ -1771,7 +1809,113 @@ dialog.import-dialog[open] {
 
   .topbar-controls {
     width: 100%;
+  }
+
+  .topbar-quick-switches {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.05fr) minmax(0, 1.05fr);
+    gap: 0.45rem;
+    width: 100%;
+  }
+
+  .topbar-quick-switches--no-period {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topbar-lang-wrap {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .topbar-lang-icon {
+    left: 0.5rem;
+  }
+
+  .control-select.topbar-lang-select {
+    width: 100%;
+    min-width: 0;
+    padding: 0.35rem 0.4rem 0.35rem 1.7rem;
+    font-size: clamp(0.74rem, 3.2vw, 0.84rem);
+    text-overflow: ellipsis;
+  }
+
+  .mobile-period-wrap {
+    position: relative;
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .mobile-period-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0.4rem 0.55rem;
+    gap: 0.25rem;
     justify-content: space-between;
+    font-size: clamp(0.74rem, 3.2vw, 0.84rem);
+  }
+
+  .mobile-period-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-period-chevron {
+    flex-shrink: 0;
+    transition: transform 0.18s ease;
+  }
+
+  .mobile-period-chevron.is-open {
+    transform: rotate(180deg);
+  }
+
+  .mobile-period-dropdown {
+    position: absolute;
+    inset-block-start: calc(100% + 0.4rem);
+    inset-inline-end: 0;
+    z-index: 35;
+    min-width: max(100%, 152px);
+    max-width: min(220px, calc(100vw - 2rem));
+    padding: 0.35rem;
+    border-radius: 14px;
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-float);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .mobile-period-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 40px;
+    padding: 0.45rem 0.7rem;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 0.86rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .mobile-period-option:hover {
+    background: var(--surface-hover);
+  }
+
+  .mobile-period-option[aria-pressed='true'] {
+    background: var(--surface-tint);
+    color: var(--text-brand);
+    font-weight: 700;
   }
 
   .app-main-content {
@@ -1935,6 +2079,7 @@ dialog.import-dialog[open] {
   .btn,
   .entry-back-btn,
   .mobile-topbar-back,
+  .mobile-period-chevron,
   .period-pill,
   .ring-segment,
   .sidebar-nav-item,
