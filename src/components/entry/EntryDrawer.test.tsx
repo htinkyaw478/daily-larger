@@ -77,4 +77,14 @@ describe('EntryDrawer mobile header and horizontal save actions', () => {
     expect(html).toContain('>Update Entry</button>');
     expect(html).not.toContain('Save &amp; Add Another');
   });
+
+  it('orders Income on the left and Expense on the right consistently', () => {
+    for (const lang of ['en', 'my', 'ko', 'ja'] as const) {
+      const html = renderDrawer(lang);
+      const incomeIdx = html.indexOf('segmented-option--income');
+      const expenseIdx = html.indexOf('segmented-option--expense');
+      expect(incomeIdx).toBeGreaterThan(-1);
+      expect(expenseIdx).toBeGreaterThan(incomeIdx);
+    }
+  });
 });

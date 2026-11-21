@@ -286,17 +286,6 @@ export function EntryDrawer({
         <div className="dialog-body">
           <fieldset className="segmented-toggle">
             <legend className="visually-hidden">{t.entry.typeLegend}</legend>
-            <label className="segmented-option segmented-option--expense">
-              <input
-                type="radio"
-                name="tx-type"
-                value="expense"
-                checked={type === 'expense'}
-                onChange={() => setType('expense')}
-                className="visually-hidden"
-              />
-              <span>{t.entry.expense}</span>
-            </label>
             <label className="segmented-option segmented-option--income">
               <input
                 type="radio"
@@ -307,6 +296,17 @@ export function EntryDrawer({
                 className="visually-hidden"
               />
               <span>{t.entry.income}</span>
+            </label>
+            <label className="segmented-option segmented-option--expense">
+              <input
+                type="radio"
+                name="tx-type"
+                value="expense"
+                checked={type === 'expense'}
+                onChange={() => setType('expense')}
+                className="visually-hidden"
+              />
+              <span>{t.entry.expense}</span>
             </label>
           </fieldset>
 
