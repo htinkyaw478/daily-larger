@@ -1,6 +1,8 @@
 import { X } from 'lucide-react';
 import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { DEFAULT_CATEGORIES } from '../../domain/ledgerLogic';
+import { useI18n } from '../../i18n/I18nContext';
+import { getCategoryLabel, getPaymentMethodLabel } from '../../i18n/translations';
 import type {
   Category,
   CreateTransactionInput,
@@ -30,6 +32,7 @@ function normalizeNumericInput(raw: string): string {
 export function EntryDrawer({
   isOpen,
   editingTx,
+  initialType = 'expense',
   categories,
   currency,
   onCurrencyChange,
@@ -39,6 +42,7 @@ export function EntryDrawer({
 }: {
   isOpen: boolean;
   editingTx: Transaction | null;
+  initialType?: TransactionType;
   categories: Category[];
   currency: CurrencyCode;
   onCurrencyChange: (next: CurrencyCode) => void;
@@ -46,6 +50,7 @@ export function EntryDrawer({
   onClose: () => void;
   onSubmit: (payload: CreateTransactionInput, keepOpen: boolean) => Promise<void>;
 }) {
+  const { language, t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const wasOpenRef = useRef(false);
@@ -101,15 +106,16 @@ export function EntryDrawer({
       setPaymentMethod(editingTx.paymentMethod);
       setNote(editingTx.note ?? '');
     } else {
-      setType('expense');
+      const nextType = initialType;
+      setType(nextType);
       setAmountStr('');
-      const defaultExpense = effectiveCategories.find((c) => c.type === 'expense');
-      setCategoryId(defaultExpense?.id ?? 6);
+      const defaultCat = effectiveCategories.find((c) => c.type === nextType);
+      setCategoryId(defaultCat?.id ?? (nextType === 'income' ? 1 : 6));
       setTransactionDate(toLocalDateString());
       setPaymentMethod('Cash');
       setNote('');
     }
-  }, [isOpen, editingTx, effectiveCategories]);
+  }, [isOpen, editingTx, initialType, effectiveCategories]);
 
   // Keep categoryId aligned when switching between Income and Expense
   useEffect(() => {
@@ -180,7 +186,7 @@ export function EntryDrawer({
     const num = Number(cleaned);
     if (!cleaned || Number.isNaN(num) || num <= 0) {
       setAmountInvalid(true);
-      setAmountErrorMsg('ပမာဏ 0 ထက်ကြီးသော ဂဏန်းထည့်ပါ · Enter an amount greater than 0.');
+      setAmountErrorMsg(t.entry.amountInvalidMsg);
       return null;
     }
     setAmountInvalid(false);
@@ -194,7 +200,7 @@ export function EntryDrawer({
 
     const parsedAmount = validateAmount(amountStr);
     if (parsedAmount === null) {
-      setServerError('ပမာဏ မှန်ကန်စွာ ထည့်ပါ · Please enter a valid amount greater than 0.');
+      setServerError(t.entry.amountSubmitError);
       amountInputRef.current?.focus();
       return;
     }
@@ -205,7 +211,7 @@ export function EntryDrawer({
         : (filteredCategories[0]?.id ?? 0);
 
     if (!safeCategoryId) {
-      setServerError('Please select a category.');
+      setServerError(t.entry.categoryMissingError);
       return;
     }
 
@@ -234,7 +240,7 @@ export function EntryDrawer({
         amountInputRef.current?.focus();
       }
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Unable to save entry');
+      setServerError(err instanceof Error ? err.message : t.entry.saveFailed);
     }
   };
 
@@ -248,14 +254,14 @@ export function EntryDrawer({
       <div className="dialog-header">
         <div>
           <h2 id={titleId} className="card-title">
-            {editingTx ? 'စာရင်းပြင်ဆင်ရန် · Edit Entry' : 'စာရင်းသစ် ထည့်ရန် · Add Entry'}
+            {editingTx ? t.entry.editTitle : t.entry.addTitle}
           </h2>
-          <p className="card-caption">Saves directly to your ledger and updates totals</p>
+          <p className="card-caption">{t.entry.subtitle}</p>
         </div>
         <button
           type="button"
           className="btn-ghost"
-          aria-label="Close entry form"
+          aria-label={t.entry.closeAria}
           onClick={() => dialogRef.current?.close()}
         >
           <X size={20} aria-hidden="true" />
@@ -269,7 +275,7 @@ export function EntryDrawer({
       >
         <div className="dialog-body">
           <fieldset className="segmented-toggle">
-            <legend className="visually-hidden">Transaction type</legend>
+            <legend className="visually-hidden">{t.entry.typeLegend}</legend>
             <label className="segmented-option segmented-option--expense">
               <input
                 type="radio"
@@ -279,7 +285,7 @@ export function EntryDrawer({
                 onChange={() => setType('expense')}
                 className="visually-hidden"
               />
-              <span>ထွက်ငွေ · Expense</span>
+              <span>{t.entry.expense}</span>
             </label>
             <label className="segmented-option segmented-option--income">
               <input
@@ -290,17 +296,17 @@ export function EntryDrawer({
                 onChange={() => setType('income')}
                 className="visually-hidden"
               />
-              <span>ဝင်ငွေ · Income</span>
+              <span>{t.entry.income}</span>
             </label>
           </fieldset>
 
           <div className="form-field">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
               <label htmlFor="entry-amount" className="form-label">
-                ပမာဏ · Amount ({CURRENCY_CONFIGS[currency].symbol}) <span aria-hidden="true">*</span>
+                {t.entry.amountLabel(CURRENCY_CONFIGS[currency].symbol)} <span aria-hidden="true">*</span>
               </label>
               <select
-                aria-label="Entry currency"
+                aria-label={t.settings.currencyLabel}
                 value={currency}
                 onChange={(e) => onCurrencyChange(e.target.value as CurrencyCode)}
                 className="control-select"
@@ -308,13 +314,13 @@ export function EntryDrawer({
               >
                 {Object.values(CURRENCY_CONFIGS).map((cfg) => (
                   <option key={cfg.code} value={cfg.code}>
-                    {cfg.label}
+                    {t.currencies[cfg.code]}
                   </option>
                 ))}
               </select>
             </div>
             <span id={amountHintId} className="form-hint">
-              Numbers only, e.g. {CURRENCY_CONFIGS[currency].example}
+              {t.entry.amountHint(CURRENCY_CONFIGS[currency].example)}
             </span>
             <input
               ref={amountInputRef}
@@ -347,16 +353,14 @@ export function EntryDrawer({
               }}
             />
             <div id={amountErrorId} className="error-msg">
-              <span role="img" aria-label="Error">
-                !
-              </span>{' '}
-              {amountErrorMsg || 'Please enter a valid positive amount.'}
+              <span aria-hidden="true">!</span>{' '}
+              {amountErrorMsg || t.entry.amountInvalidMsg}
             </div>
           </div>
 
           <fieldset className="form-field" style={{ border: 0, padding: 0 }}>
             <legend className="form-label" style={{ marginBottom: '0.45rem' }}>
-              အမျိုးအစား · Category <span aria-hidden="true">*</span>
+              {t.entry.categoryLabel} <span aria-hidden="true">*</span>
             </legend>
             <div className="category-pill-grid">
               {filteredCategories.map((cat) => (
@@ -380,7 +384,7 @@ export function EntryDrawer({
                   >
                     <CategoryIcon name={cat.icon} size={14} />
                   </span>
-                  <span>{cat.nameMy ? `${cat.nameMy} · ${cat.name}` : cat.name}</span>
+                  <span>{getCategoryLabel(cat, language)}</span>
                 </label>
               ))}
             </div>
@@ -388,7 +392,7 @@ export function EntryDrawer({
 
           <div className="form-field">
             <label htmlFor="entry-date" className="form-label">
-              ရက်စွဲ · Date
+              {t.entry.dateLabel}
             </label>
             <input
               id="entry-date"
@@ -403,7 +407,7 @@ export function EntryDrawer({
 
           <div className="form-field">
             <label htmlFor="entry-payment" className="form-label">
-              ငွေပေးချေမှု · Payment Method
+              {t.entry.paymentLabel}
             </label>
             <select
               id="entry-payment"
@@ -414,7 +418,7 @@ export function EntryDrawer({
             >
               {PAYMENT_METHODS.map((method) => (
                 <option key={method} value={method}>
-                  {method}
+                  {getPaymentMethodLabel(method, language)}
                 </option>
               ))}
             </select>
@@ -422,14 +426,14 @@ export function EntryDrawer({
 
           <div className="form-field">
             <label htmlFor="entry-note" className="form-label">
-              မှတ်ချက် · Note (Optional)
+              {t.entry.noteLabel}
             </label>
             <input
               id="entry-note"
               name="note"
               type="text"
               maxLength={255}
-              placeholder="e.g., နေ့လယ်စာ, ဆိုင်ရောင်းရငွေ"
+              placeholder={t.entry.notePlaceholder}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="form-input"
@@ -457,10 +461,10 @@ export function EntryDrawer({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
             <button type="submit" className="btn btn-primary" disabled={isSaving}>
               {isSaving
-                ? 'Saving...'
+                ? t.entry.saving
                 : editingTx
-                  ? 'ပြင်ဆင်မှု သိမ်းမည် · Update Entry'
-                  : 'သိမ်းမည် · Save Entry'}
+                  ? t.entry.update
+                  : t.entry.save}
             </button>
 
             {!editingTx && (
@@ -470,7 +474,7 @@ export function EntryDrawer({
                 disabled={isSaving}
                 onClick={(e) => handleSubmit(e, true)}
               >
-                Save & Add Another
+                {t.entry.saveAndAnother}
               </button>
             )}
           </div>

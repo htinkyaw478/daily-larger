@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
+import { getCategoryLabel } from '../../i18n/translations';
 import type { Transaction } from '../../types/ledger';
 import { formatCurrency, type CurrencyCode } from '../../utils/formatters';
 
@@ -15,6 +17,7 @@ export function ConfirmDeleteDialog({
   onCancel: () => void;
   onConfirm: (id: number) => void;
 }) {
+  const { language, t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -40,18 +43,16 @@ export function ConfirmDeleteDialog({
     return () => dialog.removeEventListener('close', handleClose);
   }, [onCancel]);
 
+  const targetLabel = target ? getCategoryLabel(target.category, language) : '';
+
   return (
     <dialog ref={dialogRef} className="confirm-dialog" aria-labelledby={titleId}>
       <h2 id={titleId} className="card-title" style={{ marginBottom: '0.5rem' }}>
-        စာရင်းဖျက်မည်လား · Delete Entry?
+        {t.dialogs.deleteTitle}
       </h2>
       {target && (
         <p style={{ margin: '0 0 1.25rem', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
-          This will permanently remove{' '}
-          <strong style={{ color: 'var(--text-primary)' }}>
-            {target.category.nameMy ?? target.category.name} ({formatCurrency(target.amount, currency)})
-          </strong>{' '}
-          from your ledger.
+          {t.dialogs.deleteBody(targetLabel, formatCurrency(target.amount, currency))}
         </p>
       )}
 
@@ -62,7 +63,7 @@ export function ConfirmDeleteDialog({
           autoFocus
           onClick={() => dialogRef.current?.close()}
         >
-          Keep Entry
+          {t.dialogs.keepEntry}
         </button>
         <button
           type="button"
@@ -71,7 +72,7 @@ export function ConfirmDeleteDialog({
           disabled={isDeleting || !target}
           onClick={() => target && onConfirm(target.id)}
         >
-          {isDeleting ? 'Deleting...' : 'Delete'}
+          {isDeleting ? t.dialogs.deleting : t.dialogs.deleteConfirm}
         </button>
       </div>
     </dialog>

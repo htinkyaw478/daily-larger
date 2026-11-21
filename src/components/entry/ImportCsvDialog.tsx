@@ -5,6 +5,7 @@ import type {
   CsvImportResult,
   DuplicateStrategy,
 } from '../../domain/csvImport';
+import { useI18n } from '../../i18n/I18nContext';
 
 const PREVIEW_ROW_LIMIT = 50;
 
@@ -27,6 +28,7 @@ export function ImportCsvDialog({
   onClose: () => void;
   onConfirmImport: (strategy: DuplicateStrategy) => void;
 }) {
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [strategy, setStrategy] = useState<DuplicateStrategy>('skip');
@@ -109,18 +111,18 @@ export function ImportCsvDialog({
     >
       <div className="dialog-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <FileSpreadsheet size={22} color="#0D47A1" aria-hidden="true" />
+          <FileSpreadsheet size={22} color="var(--text-brand)" aria-hidden="true" />
           <div>
             <h2 id={titleId} className="card-title">
-              CSV စာရင်းသွင်းရန် · Import CSV
+              {t.csvImport.title}
             </h2>
-            <p className="card-caption">{fileName ?? 'Review rows before saving to database'}</p>
+            <p className="card-caption">{fileName ?? t.csvImport.subtitleDefault}</p>
           </div>
         </div>
         <button
           type="button"
           className="btn-ghost"
-          aria-label="Close CSV import dialog"
+          aria-label={t.csvImport.closeAria}
           onClick={() => dialogRef.current?.close()}
         >
           <X size={20} aria-hidden="true" />
@@ -155,31 +157,31 @@ export function ImportCsvDialog({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
               <CheckCircle2 size={22} color="var(--income-fg)" aria-hidden="true" />
-              <h3 className="card-title">CSV Import ပြီးစီးပါပြီ · Import Summary</h3>
+              <h3 className="card-title">{t.csvImport.summaryTitle}</h3>
             </div>
 
             <div className="import-stats-grid">
               <div className="import-stat-box">
-                <span>Imported (New)</span>
+                <span>{t.csvImport.importedNew}</span>
                 <strong className="tabular-nums">{result.insertedCount}</strong>
               </div>
               <div className="import-stat-box">
-                <span>Updated</span>
+                <span>{t.csvImport.updated}</span>
                 <strong className="tabular-nums">{result.updatedCount}</strong>
               </div>
               <div className="import-stat-box">
-                <span>Skipped Duplicates</span>
+                <span>{t.csvImport.skippedDuplicates}</span>
                 <strong className="tabular-nums">{result.skippedCount}</strong>
               </div>
               <div className="import-stat-box">
-                <span>Invalid Rows Ignored</span>
+                <span>{t.csvImport.invalidIgnored}</span>
                 <strong className="tabular-nums">{result.invalidCount}</strong>
               </div>
             </div>
 
             {result.createdCategoriesCount > 0 && (
-              <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: 'var(--blue-deep)' }}>
-                Created {result.createdCategoriesCount} new custom category(ies) from CSV.
+              <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: 'var(--text-brand)' }}>
+                {t.csvImport.createdCategories(result.createdCategoriesCount)}
               </p>
             )}
           </div>
@@ -207,23 +209,23 @@ export function ImportCsvDialog({
               <>
                 <div className="import-stats-grid">
                   <div className="import-stat-box">
-                    <span>Total Rows</span>
+                    <span>{t.csvImport.totalRows}</span>
                     <strong className="tabular-nums">{preview.totalRows}</strong>
                   </div>
                   <div className="import-stat-box">
-                    <span>Valid Rows</span>
+                    <span>{t.csvImport.validRows}</span>
                     <strong className="tabular-nums" style={{ color: 'var(--income-fg)' }}>
                       {preview.validRows}
                     </strong>
                   </div>
                   <div className="import-stat-box">
-                    <span>Duplicate Rows</span>
-                    <strong className="tabular-nums" style={{ color: 'var(--blue-deep)' }}>
+                    <span>{t.csvImport.duplicateRows}</span>
+                    <strong className="tabular-nums" style={{ color: 'var(--text-brand)' }}>
                       {preview.duplicateRows}
                     </strong>
                   </div>
                   <div className="import-stat-box">
-                    <span>Invalid Rows</span>
+                    <span>{t.csvImport.invalidRows}</span>
                     <strong
                       className="tabular-nums"
                       style={{ color: preview.invalidRows > 0 ? 'var(--expense-fg)' : 'var(--text-primary)' }}
@@ -244,43 +246,55 @@ export function ImportCsvDialog({
                     }}
                   >
                     <legend className="form-label" style={{ padding: '0 0.35rem' }}>
-                      တူညီနေသော စာရင်းများ ကိုင်တွယ်ပုံ · Duplicate Handling ({preview.duplicateRows})
+                      {t.csvImport.duplicateLegend(preview.duplicateRows)}
                     </legend>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', cursor: 'pointer' }}>
                         <input
                           type="radio"
                           name="duplicate-strategy"
                           value="skip"
                           checked={strategy === 'skip'}
                           onChange={() => setStrategy('skip')}
+                          style={{ marginTop: 4 }}
                         />
                         <span>
-                          <strong>Skip duplicates</strong> (ကျော်သွားမည် — existing records will not change)
+                          <strong>{t.csvImport.skipDuplicates}</strong>
+                          <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            {t.csvImport.skipDuplicatesDesc}
+                          </span>
                         </span>
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', cursor: 'pointer' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', cursor: 'pointer' }}>
                         <input
                           type="radio"
                           name="duplicate-strategy"
                           value="update"
                           checked={strategy === 'update'}
                           onChange={() => setStrategy('update')}
+                          style={{ marginTop: 4 }}
                         />
                         <span>
-                          <strong>Update existing records</strong> (ရှိပြီးသား စာရင်းများကို ပြင်ဆင်မည်)
+                          <strong>{t.csvImport.updateExisting}</strong>
+                          <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            {t.csvImport.updateExistingDesc}
+                          </span>
                         </span>
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', cursor: 'pointer' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', cursor: 'pointer' }}>
                         <input
                           type="radio"
                           name="duplicate-strategy"
                           value="import_as_new"
                           checked={strategy === 'import_as_new'}
                           onChange={() => setStrategy('import_as_new')}
+                          style={{ marginTop: 4 }}
                         />
                         <span>
-                          <strong>Import as new records</strong> (ID အသစ်ဖြင့် စာရင်းသစ်ထည့်မည်)
+                          <strong>{t.csvImport.importAsNew}</strong>
+                          <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            {t.csvImport.importAsNewDesc}
+                          </span>
                         </span>
                       </label>
                     </div>
@@ -288,18 +302,18 @@ export function ImportCsvDialog({
                 )}
 
                 {invalidRows.length > 0 && (
-                  <div className="import-errors-list" role="region" aria-label="Validation errors">
+                  <div className="import-errors-list" role="region" aria-label={t.csvImport.invalidRows}>
                     <strong style={{ display: 'block', marginBottom: '0.35rem' }}>
-                      Validation Errors ({invalidRows.length} invalid row{invalidRows.length > 1 ? 's' : ''} will be skipped):
+                      {t.csvImport.validationErrorsTitle(invalidRows.length)}
                     </strong>
                     <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.84rem' }}>
                       {invalidRows.slice(0, 20).map((row) => (
                         <li key={row.rowNumber}>
-                          <strong>Row {row.rowNumber}:</strong> {row.errors.join(' ')}
+                          <strong>{t.csvImport.rowPrefix(row.rowNumber)}</strong> {row.errors.join(' ')}
                         </li>
                       ))}
                       {invalidRows.length > 20 && (
-                        <li>...and {invalidRows.length - 20} more invalid rows.</li>
+                        <li>{t.csvImport.moreInvalidRows(invalidRows.length - 20)}</li>
                       )}
                     </ul>
                   </div>
@@ -309,13 +323,13 @@ export function ImportCsvDialog({
                   <table className="ledger-table import-preview-table">
                     <thead>
                       <tr>
-                        <th scope="col">Row</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Date</th>
-                        <th scope="col">Type</th>
-                        <th scope="col">Category</th>
-                        <th scope="col" style={{ textAlign: 'right' }}>Amount</th>
-                        <th scope="col">Note</th>
+                        <th scope="col">{t.csvImport.colRow}</th>
+                        <th scope="col">{t.csvImport.colStatus}</th>
+                        <th scope="col">{t.ledger.colDate}</th>
+                        <th scope="col">{t.ledger.colType}</th>
+                        <th scope="col">{t.ledger.colCategory}</th>
+                        <th scope="col" style={{ textAlign: 'right' }}>{t.ledger.colAmount}</th>
+                        <th scope="col">{t.ledger.colNote}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -325,10 +339,10 @@ export function ImportCsvDialog({
                           <td>
                             <span className={`import-status-pill import-status-pill--${row.status}`}>
                               {row.status === 'new'
-                                ? 'New'
+                                ? t.csvImport.statusNew
                                 : row.status === 'duplicate'
-                                  ? 'Duplicate'
-                                  : 'Invalid'}
+                                  ? t.csvImport.statusDuplicate
+                                  : t.csvImport.statusInvalid}
                             </span>
                           </td>
                           <td className="tabular-nums">{row.rawSummary.date}</td>
@@ -345,7 +359,7 @@ export function ImportCsvDialog({
                 </div>
                 {preview.rows.length > PREVIEW_ROW_LIMIT && (
                   <p className="card-caption" style={{ marginBottom: '0.5rem' }}>
-                    Showing first {PREVIEW_ROW_LIMIT} of {preview.rows.length} rows in preview. All {importableCount} valid rows will be imported atomically.
+                    {t.csvImport.previewLimitNote(PREVIEW_ROW_LIMIT, preview.rows.length, importableCount)}
                   </p>
                 )}
               </>
@@ -361,7 +375,7 @@ export function ImportCsvDialog({
             className="btn btn-primary"
             onClick={() => dialogRef.current?.close()}
           >
-            Done
+            {t.csvImport.done}
           </button>
         ) : preview ? (
           <>
@@ -370,7 +384,7 @@ export function ImportCsvDialog({
               className="btn btn-secondary"
               onClick={() => dialogRef.current?.close()}
             >
-              Cancel
+              {t.csvImport.cancel}
             </button>
             <button
               type="button"
@@ -379,8 +393,8 @@ export function ImportCsvDialog({
               onClick={() => onConfirmImport(strategy)}
             >
               {isImporting
-                ? 'Importing...'
-                : `Import ${importableCount} Row${importableCount === 1 ? '' : 's'}`}
+                ? t.csvImport.importing
+                : t.csvImport.importRows(importableCount)}
             </button>
           </>
         ) : (
@@ -389,7 +403,7 @@ export function ImportCsvDialog({
             className="btn btn-secondary"
             onClick={() => dialogRef.current?.close()}
           >
-            Close
+            {t.csvImport.close}
           </button>
         )}
       </div>

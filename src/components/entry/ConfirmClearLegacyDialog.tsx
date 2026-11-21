@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 
 export function ConfirmClearLegacyDialog({
   isOpen,
@@ -13,6 +14,7 @@ export function ConfirmClearLegacyDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -41,12 +43,10 @@ export function ConfirmClearLegacyDialog({
   return (
     <dialog ref={dialogRef} className="confirm-dialog" aria-labelledby={titleId}>
       <h2 id={titleId} className="card-title" style={{ marginBottom: '0.5rem' }}>
-        localStorage အဟောင်း ရှင်းမည်လား · Clear Legacy Copy?
+        {t.dialogs.clearLegacyTitle}
       </h2>
       <p style={{ margin: '0 0 1.25rem', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
-        Your <strong style={{ color: 'var(--text-primary)' }}>{legacyCount} entries</strong> are already
-        safely copied into IndexedDB. Clearing the old <code>localStorage</code> copy frees space
-        and cannot be undone unless you have a JSON backup.
+        {t.dialogs.clearLegacyBody(legacyCount)}
       </p>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
@@ -56,7 +56,7 @@ export function ConfirmClearLegacyDialog({
           autoFocus
           onClick={() => dialogRef.current?.close()}
         >
-          Keep Copy
+          {t.dialogs.keepCopy}
         </button>
         <button
           type="button"
@@ -65,7 +65,7 @@ export function ConfirmClearLegacyDialog({
           disabled={isClearing}
           onClick={onConfirm}
         >
-          {isClearing ? 'Clearing...' : 'Clear Old Copy'}
+          {isClearing ? t.dialogs.clearing : t.dialogs.clearOldCopy}
         </button>
       </div>
     </dialog>

@@ -1,6 +1,8 @@
 import { useId, useMemo, useState } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
+import { formatLocalizedShortDate } from '../../i18n/translations';
 import type { CashFlowPoint } from '../../types/ledger';
-import { formatCurrency, formatShortDate, type CurrencyCode } from '../../utils/formatters';
+import { formatCurrency, type CurrencyCode } from '../../utils/formatters';
 
 function buildSmoothPath(points: Array<{ x: number; y: number }>): string {
   if (points.length === 0) return '';
@@ -25,6 +27,7 @@ export function CashFlowChart({
   currency: CurrencyCode;
   isLoading: boolean;
 }) {
+  const { language, t } = useI18n();
   const gradientId = useId();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
@@ -84,11 +87,11 @@ export function CashFlowChart({
   const labelStep = Math.max(1, Math.ceil(data.length / 6));
 
   return (
-    <section className="card" aria-label="Cash-Flow Chart">
+    <section className="card" aria-label={t.analytics.cashFlowTitle}>
       <div className="card-header">
         <div>
-          <h2 className="card-title">ငွေစီးဆင်းမှု · Cash Flow</h2>
-          <p className="card-caption">Daily Income vs Expense over selected period</p>
+          <h2 className="card-title">{t.analytics.cashFlowTitle}</h2>
+          <p className="card-caption">{t.analytics.cashFlowSubtitle}</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.82rem' }}>
@@ -101,7 +104,7 @@ export function CashFlowChart({
                 background: 'var(--blue-main)',
               }}
             />
-            ဝင်ငွေ Income
+            {t.analytics.incomeLabel}
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
             <span
@@ -109,10 +112,10 @@ export function CashFlowChart({
                 width: 10,
                 height: 10,
                 borderRadius: 999,
-                background: 'var(--blue-deep)',
+                background: 'var(--chart-expense)',
               }}
             />
-            ထွက်ငွေ Expense
+            {t.analytics.expenseLabel}
           </span>
         </div>
       </div>
@@ -131,17 +134,17 @@ export function CashFlowChart({
             fontSize: '0.86rem',
           }}
         >
-          <strong style={{ color: 'var(--blue-deep)' }}>
-            {formatShortDate(activePoint.date)}
+          <strong style={{ color: 'var(--text-brand)' }}>
+            {formatLocalizedShortDate(activePoint.date, language)}
           </strong>
           <span className="tabular-nums" style={{ color: 'var(--blue-main)', fontWeight: 600 }}>
-            Income: {formatCurrency(activePoint.income, currency)}
+            {t.analytics.incomeLabel}: {formatCurrency(activePoint.income, currency)}
           </span>
-          <span className="tabular-nums" style={{ color: 'var(--blue-deep)', fontWeight: 600 }}>
-            Expense: {formatCurrency(activePoint.expense, currency)}
+          <span className="tabular-nums" style={{ color: 'var(--chart-expense)', fontWeight: 600 }}>
+            {t.analytics.expenseLabel}: {formatCurrency(activePoint.expense, currency)}
           </span>
           <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-            Net: {activePoint.net >= 0 ? '+' : ''}
+            {t.analytics.netLabel}: {activePoint.net >= 0 ? '+' : ''}
             {formatCurrency(activePoint.net, currency)}
           </span>
         </div>
@@ -150,7 +153,7 @@ export function CashFlowChart({
       <div className="chart-svg-wrap">
         {isLoading ? (
           <div style={{ height: 240, display: 'grid', placeItems: 'center', color: 'var(--text-muted)' }}>
-            Loading cash flow...
+            {t.analytics.loadingCashFlow}
           </div>
         ) : (
           <svg
@@ -159,14 +162,14 @@ export function CashFlowChart({
             width="100%"
             height="auto"
             role="img"
-            aria-label="Animated daily cash flow chart"
+            aria-label={t.analytics.cashFlowTitle}
             onMouseLeave={() => setHoveredIdx(null)}
           >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2196F3" stopOpacity="0.28" />
-                <stop offset="70%" stopColor="#90CAF9" stopOpacity="0.12" />
-                <stop offset="100%" stopColor="#E3F2FD" stopOpacity="0.02" />
+                <stop offset="0%" stopColor="var(--blue-main)" stopOpacity="0.28" />
+                <stop offset="70%" stopColor="var(--blue-sky)" stopOpacity="0.12" />
+                <stop offset="100%" stopColor="var(--chart-grid)" stopOpacity="0" />
               </linearGradient>
             </defs>
 
@@ -180,7 +183,7 @@ export function CashFlowChart({
                   y1={y}
                   x2={width - padRight}
                   y2={y}
-                  stroke="#E3F2FD"
+                  stroke="var(--chart-grid)"
                   strokeWidth="1.2"
                 />
               );
@@ -198,7 +201,7 @@ export function CashFlowChart({
               <path
                 d={incomePath}
                 fill="none"
-                stroke="#2196F3"
+                stroke="var(--blue-main)"
                 strokeWidth="3"
                 strokeLinecap="round"
                 className="chart-line-path"
@@ -209,7 +212,7 @@ export function CashFlowChart({
               <path
                 d={expensePath}
                 fill="none"
-                stroke="#0D47A1"
+                stroke="var(--chart-expense)"
                 strokeWidth="2.5"
                 strokeDasharray="6 5"
                 strokeLinecap="round"
@@ -225,7 +228,7 @@ export function CashFlowChart({
                   y1={padTop}
                   x2={incomePoints[activeIndex].x}
                   y2={padTop + plotH}
-                  stroke="#90CAF9"
+                  stroke="var(--blue-sky)"
                   strokeWidth="1.5"
                   strokeDasharray="3 3"
                 />
@@ -233,16 +236,16 @@ export function CashFlowChart({
                   cx={incomePoints[activeIndex].x}
                   cy={incomePoints[activeIndex].y}
                   r="5.5"
-                  fill="#2196F3"
-                  stroke="#FFFFFF"
+                  fill="var(--blue-main)"
+                  stroke="var(--chart-point-stroke)"
                   strokeWidth="2"
                 />
                 <circle
                   cx={expensePoints[activeIndex].x}
                   cy={expensePoints[activeIndex].y}
                   r="5"
-                  fill="#0D47A1"
-                  stroke="#FFFFFF"
+                  fill="var(--chart-expense)"
+                  stroke="var(--chart-point-stroke)"
                   strokeWidth="2"
                 />
               </g>
@@ -259,10 +262,10 @@ export function CashFlowChart({
                   y={height - 10}
                   textAnchor="middle"
                   fontSize="11"
-                  fill="#5C6B7A"
-                  fontFamily="DM Sans, sans-serif"
+                  fill="var(--chart-axis)"
+                  fontFamily="DM Sans, Noto Sans Myanmar, sans-serif"
                 >
-                  {formatShortDate(d.date)}
+                  {formatLocalizedShortDate(d.date, language)}
                 </text>
               );
             })}

@@ -1,18 +1,5 @@
-import {
-  AlertTriangle,
-  BookOpen,
-  Database,
-  Download,
-  HardDrive,
-  Plus,
-  RefreshCw,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
-  Trash2,
-  Upload,
-} from 'lucide-react';
-import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   dismissCorruptedNotice,
   downloadLocalBackupJson,
@@ -33,15 +20,16 @@ import {
   useTransactions,
   useUpdateTransaction,
 } from './api/client';
-import { CashFlowChart } from './components/dashboard/CashFlowChart';
-import { CategoryRing } from './components/dashboard/CategoryRing';
-import { KpiCards } from './components/dashboard/KpiCards';
 import { ConfirmClearLegacyDialog } from './components/entry/ConfirmClearLegacyDialog';
 import { ConfirmDeleteDialog } from './components/entry/ConfirmDeleteDialog';
 import { ConfirmRestoreDialog } from './components/entry/ConfirmRestoreDialog';
 import { EntryDrawer } from './components/entry/EntryDrawer';
 import { ImportCsvDialog } from './components/entry/ImportCsvDialog';
+import { AppLayout, type AppPage } from './components/layout/AppLayout';
 import { TransactionTable } from './components/ledger/TransactionTable';
+import { AnalyticsPage } from './components/pages/AnalyticsPage';
+import { HomePage } from './components/pages/HomePage';
+import { SettingsPage } from './components/pages/SettingsPage';
 import type {
   CsvImportPreview,
   CsvImportResult,
@@ -49,27 +37,45 @@ import type {
 } from './domain/csvImport';
 import { parseAndValidateBackupJson } from './domain/ledgerLogic';
 import { usePwaInstall } from './hooks/usePwaInstall';
+import { useTheme } from './hooks/useTheme';
+import { I18nContext } from './i18n/I18nContext';
+import { TRANSLATIONS, type LanguageCode } from './i18n/translations';
+import {
+  getSavedLanguagePreference,
+  getSavedSidebarCollapsed,
+  saveLanguagePreference,
+  saveSidebarCollapsed,
+} from './storage/ledgerStorage';
 import type {
   CreateTransactionInput,
   Transaction,
   TransactionFilters,
+  TransactionType,
 } from './types/ledger';
 import {
-  CURRENCY_CONFIGS,
   getPresetDateRange,
   type CurrencyCode,
   type PeriodPreset,
 } from './utils/formatters';
 
-function formatBytes(bytes: number | null): string {
-  if (bytes === null || !Number.isFinite(bytes)) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+function parsePageFromHash(hash: string): AppPage {
+  const cleaned = hash.replace(/^#\/?/, '').trim().toLowerCase();
+  if (cleaned === 'ledger' || cleaned === 'analytics' || cleaned === 'settings') {
+    return cleaned;
+  }
+  return 'home';
 }
 
 export function App() {
+  const { theme, setTheme } = useTheme();
+  const [language, setLanguageState] = useState<LanguageCode>(() => getSavedLanguagePreference());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
+    getSavedSidebarCollapsed()
+  );
+  const [activePage, setActivePage] = useState<AppPage>(() =>
+    typeof window !== 'undefined' ? parsePageFromHash(window.location.hash) : 'home'
+  );
+
   const [currency, setCurrency] = useState<CurrencyCode>(() => getSavedCurrencyPreference());
   const [preset, setPreset] = useState<PeriodPreset>('month');
   const [dateRange, setDateRange] = useState(() => getPresetDateRange('month'));
@@ -80,6 +86,7 @@ export function App() {
   });
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerInitialType, setDrawerInitialType] = useState<TransactionType>('expense');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [pendingRestore, setPendingRestore] = useState<{
@@ -103,7 +110,63 @@ export function App() {
   const [corruptedDismissed, setCorruptedDismissed] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const restoreInputRef = useRef<HTMLInputElement>(null);
+
+  const t = TRANSLATIONS[language];
+
+  const setLanguage = useCallback((nextLang: LanguageCode) => {
+    setLanguageState(nextLang);
+    saveLanguagePreference(nextLang);
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = nextLang;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = language;
+    }
+  }, [language]);
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'daily_ledger_language' && (e.newValue === 'my' || e.newValue === 'en')) {
+        setLanguageState(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setActivePage(parsePageFromHash(window.location.hash));
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleNavigate = useCallback((page: AppPage) => {
+    setActivePage(page);
+    if (typeof window !== 'undefined') {
+      const targetHash = `#/${page}`;
+      if (window.location.hash !== targetHash) {
+        window.location.hash = targetHash;
+      }
+      window.scrollTo({ top: 0 });
+    }
+  }, []);
+
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      saveSidebarCollapsed(next);
+      return next;
+    });
+  }, []);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [theme, setTheme]);
 
   useEffect(() => {
     if (!toast) return;
@@ -115,6 +178,13 @@ export function App() {
   const switchModeMutation = useSwitchStorageMode();
   const { data: categories = [] } = useCategories();
   const dashboardQuery = useDashboardSummary(dateRange.from, dateRange.to);
+  const recentTransactionsQuery = useTransactions({
+    from: dateRange.from,
+    to: dateRange.to,
+    sort: 'date_desc',
+    page: 1,
+    limit: 4,
+  });
   const transactionsQuery = useTransactions({
     ...filters,
     from: dateRange.from,
@@ -144,13 +214,15 @@ export function App() {
     setFilters((prev) => ({ ...prev, page: 1 }));
   };
 
-  const handleOpenAdd = () => {
+  const handleOpenAdd = (initialType: TransactionType = 'expense') => {
     setEditingTx(null);
+    setDrawerInitialType(initialType);
     setDrawerOpen(true);
   };
 
   const handleOpenEdit = (tx: Transaction) => {
     setEditingTx(tx);
+    setDrawerInitialType(tx.type);
     setDrawerOpen(true);
   };
 
@@ -160,12 +232,12 @@ export function App() {
       await updateMutation.mutateAsync({ id: editingTx.id, input: payload });
       setDrawerOpen(false);
       setEditingTx(null);
-      setToast('စာရင်း ပြင်ဆင်ပြီးပါပြီ · Entry updated');
+      setToast(t.toasts.entryUpdated);
       return;
     }
 
     await createMutation.mutateAsync(payload);
-    setToast('စာရင်းသစ် သိမ်းဆည်းပြီးပါပြီ · Entry saved');
+    setToast(t.toasts.entrySaved);
     if (!keepOpen) {
       setDrawerOpen(false);
     }
@@ -176,9 +248,9 @@ export function App() {
     try {
       await deleteMutation.mutateAsync(id);
       setDeleteTarget(null);
-      setToast('စာရင်း ဖျက်ပြီးပါပြီ · Entry removed');
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Unable to delete entry');
+      setToast(t.toasts.entryDeleted);
+    } catch {
+      setActionError(t.errors.deleteFailed);
     }
   };
 
@@ -186,13 +258,9 @@ export function App() {
     setActionError(null);
     try {
       const res = await sampleMutation.mutateAsync();
-      setToast(
-        res.inserted > 0
-          ? 'နမူနာ စာရင်းများ ထည့်သွင်းပြီးပါပြီ · Sample data loaded'
-          : res.message
-      );
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Unable to load sample data');
+      setToast(res.inserted > 0 ? t.toasts.sampleLoaded : res.message);
+    } catch {
+      setActionError(t.errors.sampleFailed);
     }
   };
 
@@ -203,9 +271,9 @@ export function App() {
         { ...filters, from: dateRange.from, to: dateRange.to },
         currency
       );
-      setToast('CSV ဖိုင် ထုတ်ယူပြီးပါပြီ · CSV exported');
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'CSV export failed');
+      setToast(t.toasts.csvExported);
+    } catch {
+      setActionError(t.errors.csvExportFailed);
     }
   };
 
@@ -213,9 +281,9 @@ export function App() {
     setActionError(null);
     try {
       await downloadLocalBackupJson();
-      setToast('Backup JSON သိမ်းဆည်းပြီးပါပြီ · Backup downloaded');
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Backup download failed');
+      setToast(t.toasts.backupDownloaded);
+    } catch {
+      setActionError(t.errors.backupDownloadFailed);
     }
   };
 
@@ -229,8 +297,8 @@ export function App() {
       const rawJson = await file.text();
       parseAndValidateBackupJson(rawJson);
       setPendingRestore({ fileName: file.name, rawJson });
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Invalid backup file');
+    } catch {
+      setActionError(t.errors.invalidBackupFile);
     }
   };
 
@@ -240,10 +308,10 @@ export function App() {
     try {
       const result = await importBackupMutation.mutateAsync(pendingRestore.rawJson);
       setPendingRestore(null);
-      setToast(`Backup ပြန်သွင်းပြီးပါပြီ · Restored ${result.restoredCount} entries`);
-    } catch (err) {
+      setToast(t.toasts.backupRestored(result.restoredCount));
+    } catch {
       setPendingRestore(null);
-      setActionError(err instanceof Error ? err.message : 'Failed to restore backup');
+      setActionError(t.errors.restoreFailed);
     }
   };
 
@@ -252,10 +320,10 @@ export function App() {
     try {
       await clearLegacyMutation.mutateAsync();
       setClearLegacyOpen(false);
-      setToast('localStorage အဟောင်းကို ရှင်းလင်းပြီးပါပြီ · Legacy copy cleared');
-    } catch (err) {
+      setToast(t.toasts.legacyCleared);
+    } catch {
       setClearLegacyOpen(false);
-      setActionError(err instanceof Error ? err.message : 'Unable to clear legacy data');
+      setActionError(t.errors.clearLegacyFailed);
     }
   };
 
@@ -278,7 +346,7 @@ export function App() {
         fileName: file.name,
         preview: null,
         result: null,
-        error: err instanceof Error ? err.message : 'Unable to parse CSV file',
+        error: err instanceof Error ? err.message : t.errors.csvParseFailed,
       });
     }
   };
@@ -291,284 +359,68 @@ export function App() {
         strategy,
       });
       setCsvImportState((prev) => ({ ...prev, result, error: null }));
-      setToast(
-        `CSV စာရင်းသွင်းပြီးပါပြီ · Imported ${result.insertedCount}, updated ${result.updatedCount}`
-      );
+      setToast(t.toasts.csvImported(result.insertedCount, result.updatedCount));
     } catch (err) {
       setCsvImportState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : 'CSV import failed',
+        error: err instanceof Error ? err.message : t.errors.csvImportFailed,
       }));
     }
   };
 
+  const handleInstallApp = async () => {
+    try {
+      const outcome = await promptInstall();
+      if (outcome === 'accepted') {
+        setToast(t.toasts.appInstalled);
+      }
+    } catch {
+      setActionError(t.errors.installFailed);
+    }
+  };
+
+  const i18nValue = useMemo(
+    () => ({
+      language,
+      setLanguage,
+      t,
+    }),
+    [language, setLanguage, t]
+  );
+
   const summary = dashboardQuery.data;
-  const showEmptyOnboarding = summary && !summary.hasAnyTransactions;
-  const isLocalMode = storageStatus?.mode === 'local';
+  const isLocalMode = storageStatus?.mode !== 'api';
 
   return (
-    <div className="app-shell">
-      <header className="top-header">
-        <div className="brand-block">
-          <div className="brand-mark" aria-hidden="true">
-            <BookOpen size={24} />
-          </div>
-          <div>
-            <h1 className="brand-title">နေ့စဉ် စာရင်း · Daily Ledger</h1>
-            <p className="brand-subtitle">
-              Calm, clear personal & daily cash-flow management
-            </p>
-          </div>
-        </div>
-
-        <div className="header-actions">
-          <div className="period-pills" role="group" aria-label="Dashboard date range">
-            <button
-              type="button"
-              className="period-pill"
-              aria-pressed={preset === 'today'}
-              onClick={() => handlePresetChange('today')}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              className="period-pill"
-              aria-pressed={preset === 'week'}
-              onClick={() => handlePresetChange('week')}
-            >
-              7 Days
-            </button>
-            <button
-              type="button"
-              className="period-pill"
-              aria-pressed={preset === 'month'}
-              onClick={() => handlePresetChange('month')}
-            >
-              This Month
-            </button>
-          </div>
-
-          <label htmlFor="header-currency" className="visually-hidden">
-            Currency
-          </label>
-          <select
-            id="header-currency"
-            className="control-select"
-            aria-label="Display currency"
-            value={currency}
-            onChange={(e) => handleCurrencyChange(e.target.value as CurrencyCode)}
-          >
-            {Object.values(CURRENCY_CONFIGS).map((cfg) => (
-              <option key={cfg.code} value={cfg.code}>
-                {cfg.labelMy}
-              </option>
-            ))}
-          </select>
-
-          <button type="button" className="btn btn-primary" onClick={handleOpenAdd}>
-            <Plus size={18} aria-hidden="true" />
-            <span>စာရင်းသစ်ထည့်ရန် · Add Entry</span>
-          </button>
-        </div>
-      </header>
-
-      <main>
-        {storageStatus && (
-          <section className="storage-banner" aria-label="Storage Mode">
-            <div className="storage-banner-info">
-              {isLocalMode ? (
-                <HardDrive size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
-              ) : (
-                <Database size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
-              )}
-              <div>
-                {isLocalMode ? (
-                  <>
-                    <div>
-                      <strong>
-                        {storageStatus.engine === 'localstorage'
-                          ? 'Local Storage Fallback Mode:'
-                          : `IndexedDB Mode (v${storageStatus.dbVersion}):`}
-                      </strong>{' '}
-                      စာရင်းများကို ဤ Browser sandbox storage ထဲတွင်သာ သိမ်းဆည်းထားပါသည် (Device များကြား auto-sync မဖြစ်ပါ — iPhone Safari တွင် Backup JSON သိမ်းထားသင့်ပါသည်)။
-                    </div>
-                    <div
-                      className="tabular-nums"
-                      style={{
-                        marginTop: '0.2rem',
-                        fontSize: '0.8rem',
-                        color: 'var(--text-muted)',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '0.6rem',
-                      }}
-                    >
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <ShieldCheck size={13} aria-hidden="true" />
-                        Persistence:{' '}
-                        {storageStatus.persisted === true
-                          ? 'Granted'
-                          : storageStatus.persisted === false
-                            ? 'Best-effort'
-                            : 'Browser-managed'}
-                      </span>
-                      {storageStatus.usageBytes !== null && storageStatus.quotaBytes !== null && (
-                        <span>
-                          Storage: {formatBytes(storageStatus.usageBytes)} /{' '}
-                          {formatBytes(storageStatus.quotaBytes)}
-                          {storageStatus.quotaPercent !== null ? ` (${storageStatus.quotaPercent}%)` : ''}
-                        </span>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <strong>PostgreSQL API Mode:</strong> Connected to server database.
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="storage-banner-actions">
-              {isLocalMode && (
-                <>
-                  <button
-                    type="button"
-                    className="btn btn-secondary storage-badge-btn"
-                    onClick={handleBackupDownload}
-                  >
-                    <Download size={14} aria-hidden="true" />
-                    Backup JSON
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary storage-badge-btn"
-                    onClick={() => restoreInputRef.current?.click()}
-                  >
-                    <Upload size={14} aria-hidden="true" />
-                    Restore JSON
-                  </button>
-                  <input
-                    ref={restoreInputRef}
-                    type="file"
-                    accept="application/json,.json"
-                    className="visually-hidden"
-                    aria-label="Choose backup JSON file"
-                    onChange={handleBackupFileSelected}
-                  />
-                  {storageStatus.hasLegacyLocalStorageData && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary storage-badge-btn"
-                      onClick={() => setClearLegacyOpen(true)}
-                    >
-                      <Trash2 size={14} aria-hidden="true" />
-                      Clear Old localStorage ({storageStatus.legacyLocalStorageCount})
-                    </button>
-                  )}
-                </>
-              )}
-
-              {isLocalMode && storageStatus.apiConfigured && (
-                <button
-                  type="button"
-                  className="btn btn-secondary storage-badge-btn"
-                  disabled={switchModeMutation.isPending}
-                  onClick={() => switchModeMutation.mutate('api')}
-                >
-                  <RefreshCw size={14} aria-hidden="true" />
-                  {switchModeMutation.isPending ? 'Checking...' : 'Retry API'}
-                </button>
-              )}
-
-              {!isLocalMode && (
-                <button
-                  type="button"
-                  className="btn btn-secondary storage-badge-btn"
-                  disabled={switchModeMutation.isPending}
-                  onClick={() => switchModeMutation.mutate('local')}
-                >
-                  <HardDrive size={14} aria-hidden="true" />
-                  Use IndexedDB Mode
-                </button>
-              )}
-
-              {canInstall && (
-                <button
-                  type="button"
-                  className="btn btn-secondary storage-badge-btn"
-                  aria-disabled={isInstalling ? 'true' : undefined}
-                  onClick={async () => {
-                    try {
-                      const outcome = await promptInstall();
-                      if (outcome === 'accepted') {
-                        setToast('App ကို Install လုပ်ပြီးပါပြီ · App installed');
-                      }
-                    } catch {
-                      setActionError('Unable to start app installation.');
-                    }
-                  }}
-                >
-                  <Smartphone size={14} aria-hidden="true" />
-                  Install App
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-
+    <I18nContext.Provider value={i18nValue}>
+      <AppLayout
+        activePage={activePage}
+        onNavigate={handleNavigate}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={handleToggleSidebar}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+        preset={preset}
+        onPresetChange={handlePresetChange}
+        onOpenAdd={() => handleOpenAdd('expense')}
+      >
         {isLocalMode && storageStatus?.quotaWarning && (
-          <div
-            role="alert"
-            className="card"
-            style={{
-              marginBottom: '1.25rem',
-              borderColor: 'var(--expense-fg)',
-              background: 'var(--expense-bg)',
-              color: 'var(--expense-fg)',
-            }}
-          >
-            Browser storage usage is above 80% ({storageStatus.quotaPercent}%). Please download a JSON backup and remove older records if needed.
+          <div role="alert" className="alert-card">
+            {t.settings.quotaWarning(storageStatus.quotaPercent)}
           </div>
         )}
 
         {isLocalMode && storageStatus?.storageError && (
-          <div
-            role="alert"
-            className="card"
-            style={{
-              marginBottom: '1.25rem',
-              borderColor: 'var(--expense-fg)',
-              background: 'var(--expense-bg)',
-              color: 'var(--expense-fg)',
-            }}
-          >
+          <div role="alert" className="alert-card">
             {storageStatus.storageError}
           </div>
         )}
 
         {storageStatus?.corruptedRecoveryKey && !corruptedDismissed && (
-          <div
-            role="alert"
-            className="card"
-            style={{
-              marginBottom: '1.25rem',
-              borderColor: 'var(--expense-fg)',
-              background: 'var(--expense-bg)',
-              color: 'var(--expense-fg)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '1rem',
-            }}
-          >
+          <div role="alert" className="alert-card alert-card--split">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <AlertTriangle size={18} aria-hidden="true" />
-              <span>
-                Malformed browser records were quarantined safely under{' '}
-                <code>{storageStatus.corruptedRecoveryKey}</code>.
-              </span>
+              <span>{t.settings.corruptedNotice(storageStatus.corruptedRecoveryKey)}</span>
             </div>
             <button
               type="button"
@@ -578,94 +430,79 @@ export function App() {
                 setCorruptedDismissed(true);
               }}
             >
-              Dismiss
+              {t.settings.dismiss}
             </button>
           </div>
         )}
 
         {(dashboardQuery.isError || actionError) && (
-          <div
-            role="alert"
-            className="card"
-            style={{
-              marginBottom: '1.25rem',
-              borderColor: 'var(--expense-fg)',
-              background: 'var(--expense-bg)',
-              color: 'var(--expense-fg)',
-            }}
-          >
-            {actionError ??
-              (dashboardQuery.error instanceof Error
-                ? dashboardQuery.error.message
-                : 'Unable to load ledger data.')}
+          <div role="alert" className="alert-card">
+            {actionError ?? t.errors.genericLoad}
           </div>
         )}
 
-        {showEmptyOnboarding && (
-          <section className="empty-hero" aria-label="Welcome onboarding">
-            <div>
-              <h2>မင်္ဂလာပါ — Welcome to Your Daily Ledger</h2>
-              <p>
-                Your ledger is fresh and ready. Log your first income or expense in seconds, or load sample entries to explore the dashboard charts immediately.
-              </p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-              <button type="button" className="btn btn-primary" onClick={handleOpenAdd}>
-                <Plus size={18} aria-hidden="true" />
-                Add Your First Entry
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={sampleMutation.isPending}
-                onClick={handleLoadSample}
-              >
-                <Sparkles size={17} aria-hidden="true" />
-                {sampleMutation.isPending ? 'Loading...' : 'Load Sample Data'}
-              </button>
-            </div>
-          </section>
+        {activePage === 'home' && (
+          <HomePage
+            summary={summary}
+            recentTransactions={recentTransactionsQuery.data?.data ?? []}
+            currency={currency}
+            isLoading={dashboardQuery.isLoading}
+            isSeedingSample={sampleMutation.isPending}
+            onOpenAddWithType={(type) => handleOpenAdd(type ?? 'expense')}
+            onLoadSample={handleLoadSample}
+            onNavigate={handleNavigate}
+          />
         )}
 
-        <KpiCards
-          kpis={summary?.kpis}
-          currency={currency}
-          isLoading={dashboardQuery.isLoading}
-        />
+        {activePage === 'ledger' && (
+          <TransactionTable
+            transactions={transactionsQuery.data?.data ?? []}
+            total={transactionsQuery.data?.meta.total ?? 0}
+            page={filters.page ?? 1}
+            limit={filters.limit ?? 12}
+            categories={categories}
+            filters={filters}
+            currency={currency}
+            isLoading={transactionsQuery.isLoading}
+            onFiltersChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
+            onEdit={handleOpenEdit}
+            onDeleteRequest={setDeleteTarget}
+            onExportCsv={handleExportCsv}
+            onImportCsvFile={handleImportCsvFileSelected}
+          />
+        )}
 
-        <div className="charts-grid">
-          <CashFlowChart
-            data={summary?.cashFlow ?? []}
+        {activePage === 'analytics' && (
+          <AnalyticsPage
+            summary={summary}
             currency={currency}
             isLoading={dashboardQuery.isLoading}
           />
-          <CategoryRing
-            breakdown={summary?.categoryBreakdown}
-            currency={currency}
-            isLoading={dashboardQuery.isLoading}
-          />
-        </div>
+        )}
 
-        <TransactionTable
-          transactions={transactionsQuery.data?.data ?? []}
-          total={transactionsQuery.data?.meta.total ?? 0}
-          page={filters.page ?? 1}
-          limit={filters.limit ?? 12}
-          categories={categories}
-          filters={filters}
-          currency={currency}
-          isLoading={transactionsQuery.isLoading}
-          onFiltersChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
-          onEdit={handleOpenEdit}
-          onDeleteRequest={setDeleteTarget}
-          onExportCsv={handleExportCsv}
-          onImportCsvFile={handleImportCsvFileSelected}
-        />
-      </main>
+        {activePage === 'settings' && (
+          <SettingsPage
+            theme={theme}
+            onThemeChange={setTheme}
+            currency={currency}
+            onCurrencyChange={handleCurrencyChange}
+            storageStatus={storageStatus}
+            isSwitchingMode={switchModeMutation.isPending}
+            onSwitchMode={(mode) => switchModeMutation.mutate(mode)}
+            onBackupDownload={handleBackupDownload}
+            onBackupFileSelected={handleBackupFileSelected}
+            onOpenClearLegacy={() => setClearLegacyOpen(true)}
+            canInstall={canInstall}
+            isInstalling={isInstalling}
+            onInstallApp={handleInstallApp}
+          />
+        )}
+      </AppLayout>
 
       <EntryDrawer
         isOpen={drawerOpen}
         editingTx={editingTx}
+        initialType={drawerInitialType}
         categories={categories}
         currency={currency}
         onCurrencyChange={handleCurrencyChange}
@@ -725,7 +562,7 @@ export function App() {
           {toast}
         </div>
       )}
-    </div>
+    </I18nContext.Provider>
   );
 }
 

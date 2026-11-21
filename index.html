@@ -3,12 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#2196F3" />
+    <script>
+      (function () {
+        try {
+          var savedTheme = localStorage.getItem('daily_ledger_theme');
+          var theme =
+            savedTheme === 'light' || savedTheme === 'dark'
+              ? savedTheme
+              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.dataset.theme = theme;
+          var csMeta = document.querySelector('meta[name="color-scheme"]');
+          if (csMeta) csMeta.setAttribute('content', theme);
+          var tcMeta = document.querySelector('meta[name="theme-color"]');
+          if (tcMeta) tcMeta.setAttribute('content', theme === 'dark' ? '#0B1220' : '#2196F3');
+          var savedLang = localStorage.getItem('daily_ledger_language');
+          if (savedLang === 'en' || savedLang === 'my') {
+            document.documentElement.lang = savedLang;
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>နေ့စဉ် စာရင်း — Daily Ledger</title>
     <meta
       name="description"
       content="နေ့စဉ် စာရင်း (Daily Ledger) — Clean personal & daily cash-flow management with offline IndexedDB storage."
     />
-    <meta name="theme-color" content="#2196F3" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

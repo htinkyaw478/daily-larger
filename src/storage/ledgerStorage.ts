@@ -3,6 +3,7 @@ import type {
   CsvImportResult,
   DuplicateStrategy,
 } from '../domain/csvImport';
+import type { LanguageCode } from '../i18n/translations';
 import type {
   Category,
   CreateTransactionInput,
@@ -15,6 +16,7 @@ import type {
 import { isCurrencyCode, type CurrencyCode } from '../utils/formatters';
 
 export type StorageMode = 'api' | 'local';
+export type ThemeMode = 'light' | 'dark';
 
 export interface StorageStatus {
   mode: StorageMode;
@@ -56,35 +58,41 @@ export interface LedgerStorage {
 
 const CURRENCY_STORAGE_KEY = 'daily_ledger_currency';
 const PREFERRED_MODE_KEY = 'daily_ledger_preferred_mode';
+const THEME_STORAGE_KEY = 'daily_ledger_theme';
+const LANGUAGE_STORAGE_KEY = 'daily_ledger_language';
+const SIDEBAR_COLLAPSED_KEY = 'daily_ledger_sidebar_collapsed';
 
-export function getSavedCurrencyPreference(): CurrencyCode {
+function safeGetItem(key: string): string | null {
   try {
-    if (typeof window === 'undefined') return 'MMK';
-    const saved = window.localStorage.getItem(CURRENCY_STORAGE_KEY);
-    return isCurrencyCode(saved) ? saved : 'MMK';
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem(key);
   } catch {
-    return 'MMK';
+    return null;
   }
 }
 
-export function saveCurrencyPreference(currency: CurrencyCode): void {
+function safeSetItem(key: string, value: string): void {
   try {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+      window.localStorage.setItem(key, value);
     }
   } catch {
     // Ignore preference write errors when storage is restricted
   }
 }
 
+export function getSavedCurrencyPreference(): CurrencyCode {
+  const saved = safeGetItem(CURRENCY_STORAGE_KEY);
+  return isCurrencyCode(saved) ? saved : 'MMK';
+}
+
+export function saveCurrencyPreference(currency: CurrencyCode): void {
+  safeSetItem(CURRENCY_STORAGE_KEY, currency);
+}
+
 export function getPreferredMode(): StorageMode | null {
-  try {
-    if (typeof window === 'undefined') return null;
-    const saved = window.localStorage.getItem(PREFERRED_MODE_KEY);
-    return saved === 'api' || saved === 'local' ? saved : null;
-  } catch {
-    return null;
-  }
+  const saved = safeGetItem(PREFERRED_MODE_KEY);
+  return saved === 'api' || saved === 'local' ? saved : null;
 }
 
 export function savePreferredMode(mode: StorageMode | null): void {
@@ -98,4 +106,40 @@ export function savePreferredMode(mode: StorageMode | null): void {
   } catch {
     // Ignore storage write errors
   }
+}
+
+export function getSavedThemePreference(): ThemeMode {
+  const saved = safeGetItem(THEME_STORAGE_KEY);
+  if (saved === 'light' || saved === 'dark') {
+    return saved;
+  }
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  ) {
+    return 'dark';
+  }
+  return 'light';
+}
+
+export function saveThemePreference(theme: ThemeMode): void {
+  safeSetItem(THEME_STORAGE_KEY, theme);
+}
+
+export function getSavedLanguagePreference(): LanguageCode {
+  const saved = safeGetItem(LANGUAGE_STORAGE_KEY);
+  return saved === 'en' || saved === 'my' ? saved : 'my';
+}
+
+export function saveLanguagePreference(language: LanguageCode): void {
+  safeSetItem(LANGUAGE_STORAGE_KEY, language);
+}
+
+export function getSavedSidebarCollapsed(): boolean {
+  return safeGetItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+}
+
+export function saveSidebarCollapsed(collapsed: boolean): void {
+  safeSetItem(SIDEBAR_COLLAPSED_KEY, collapsed ? 'true' : 'false');
 }

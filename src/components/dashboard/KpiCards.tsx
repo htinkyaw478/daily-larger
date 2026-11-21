@@ -1,16 +1,19 @@
 import { ArrowDownLeft, ArrowUpRight, Wallet } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import type { DashboardSummary } from '../../types/ledger';
 import { formatCurrency, type CurrencyCode } from '../../utils/formatters';
 
 function DeltaBadge({
   delta,
+  newPeriodLabel,
   invertGood = false,
 }: {
   delta: number | null;
+  newPeriodLabel: string;
   invertGood?: boolean;
 }) {
   if (delta === null) {
-    return <span className="delta-pill delta-pill--neutral">New period</span>;
+    return <span className="delta-pill delta-pill--neutral">{newPeriodLabel}</span>;
   }
 
   const isPositive = delta >= 0;
@@ -34,16 +37,17 @@ export function KpiCards({
   currency: CurrencyCode;
   isLoading: boolean;
 }) {
+  const { t } = useI18n();
   const income = kpis?.totalIncome ?? 0;
   const expense = kpis?.totalExpense ?? 0;
   const net = kpis?.netBalance ?? 0;
 
   return (
-    <section aria-label="Key Financial Indicators" className="kpi-grid">
+    <section aria-label={t.kpi.sectionLabel} className="kpi-grid">
       <article className="kpi-card">
         <div className="kpi-top">
           <div>
-            <div className="kpi-label">စုစုပေါင်း ဝင်ငွေ · Total Income</div>
+            <div className="kpi-label">{t.kpi.totalIncome}</div>
           </div>
           <div className="kpi-icon-badge" aria-hidden="true">
             <ArrowDownLeft size={20} />
@@ -53,15 +57,15 @@ export function KpiCards({
           {isLoading ? '—' : formatCurrency(income, currency)}
         </p>
         <div className="kpi-meta">
-          <DeltaBadge delta={kpis?.incomeDeltaPct ?? null} />
-          <span>vs previous period</span>
+          <DeltaBadge delta={kpis?.incomeDeltaPct ?? null} newPeriodLabel={t.kpi.newPeriod} />
+          <span>{t.kpi.vsPrevious}</span>
         </div>
       </article>
 
       <article className="kpi-card">
         <div className="kpi-top">
           <div>
-            <div className="kpi-label">စုစုပေါင်း ထွက်ငွေ · Total Expense</div>
+            <div className="kpi-label">{t.kpi.totalExpense}</div>
           </div>
           <div className="kpi-icon-badge" aria-hidden="true">
             <ArrowUpRight size={20} />
@@ -71,15 +75,19 @@ export function KpiCards({
           {isLoading ? '—' : formatCurrency(expense, currency)}
         </p>
         <div className="kpi-meta">
-          <DeltaBadge delta={kpis?.expenseDeltaPct ?? null} invertGood />
-          <span>vs previous period</span>
+          <DeltaBadge
+            delta={kpis?.expenseDeltaPct ?? null}
+            newPeriodLabel={t.kpi.newPeriod}
+            invertGood
+          />
+          <span>{t.kpi.vsPrevious}</span>
         </div>
       </article>
 
       <article className="kpi-card kpi-card--featured">
         <div className="kpi-top">
           <div>
-            <div className="kpi-label">လက်ကျန်ငွေ · Net Balance</div>
+            <div className="kpi-label">{t.kpi.netBalance}</div>
           </div>
           <div className="kpi-icon-badge" aria-hidden="true">
             <Wallet size={20} />
@@ -89,8 +97,8 @@ export function KpiCards({
           {isLoading ? '—' : formatCurrency(net, currency)}
         </p>
         <div className="kpi-meta">
-          <DeltaBadge delta={kpis?.netDeltaPct ?? null} />
-          <span>{net >= 0 ? 'Surplus in period' : 'Deficit in period'}</span>
+          <DeltaBadge delta={kpis?.netDeltaPct ?? null} newPeriodLabel={t.kpi.newPeriod} />
+          <span>{net >= 0 ? t.kpi.surplus : t.kpi.deficit}</span>
         </div>
       </article>
     </section>

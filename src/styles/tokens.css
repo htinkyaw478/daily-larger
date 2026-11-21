@@ -1,24 +1,36 @@
 :root {
-  /* 60% Dominant Canvas & Surfaces */
+  /* Light Theme Tokens (60-30-10 Blue Luxury) */
   --surface-white: #ffffff;
   --surface-canvas: #f8fbfe;
   --surface-tint: #e3f2fd;
+  --surface-elevated: #ffffff;
+  --surface-hover: #f1f7fd;
+  --backdrop-rgba: rgba(13, 71, 161, 0.24);
 
-  /* 30% Secondary Structure & Text */
   --text-primary: #333333;
   --text-muted: #5c6b7a;
+  --text-brand: #0d47a1;
   --blue-sky: #90caf9;
   --border-subtle: #dbe9f6;
 
-  /* 10% Primary Accent & High Emphasis */
   --blue-main: #2196f3;
   --blue-deep: #0d47a1;
+  --accent-primary: #2196f3;
+  --accent-primary-hover: #0d47a1;
+  --accent-primary-fg: #ffffff;
 
-  /* Restrained Semantic Accents */
   --income-fg: #0f9d58;
   --income-bg: #e8f5e9;
   --expense-fg: #d93025;
   --expense-bg: #fdecea;
+
+  --chart-grid: #e3f2fd;
+  --chart-expense: #0d47a1;
+  --chart-axis: #5c6b7a;
+  --chart-point-stroke: #ffffff;
+
+  --scrollbar-track: #e3f2fd;
+  --scrollbar-thumb: #90caf9;
 
   /* Typography */
   --font-display: 'DM Serif Display', 'Noto Sans Myanmar', Georgia, serif;
@@ -31,7 +43,90 @@
   --shadow-card: 0 10px 30px -12px rgba(13, 71, 161, 0.08), 0 2px 6px rgba(13, 71, 161, 0.04);
   --shadow-float: 0 24px 60px -16px rgba(13, 71, 161, 0.22);
 
+  color-scheme: light dark;
+  accent-color: var(--accent-primary);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+:root[data-theme='light'],
+:root:has(> head > meta[name='color-scheme'][content='light']) {
   color-scheme: light;
-  accent-color: var(--blue-main);
-  scrollbar-color: var(--blue-sky) var(--surface-tint);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --surface-white: #131c2e;
+    --surface-canvas: #0b1220;
+    --surface-tint: #1b2c47;
+    --surface-elevated: #172338;
+    --surface-hover: #19263e;
+    --backdrop-rgba: rgba(4, 9, 20, 0.65);
+
+    --text-primary: #eef4fc;
+    --text-muted: #9eb2c9;
+    --text-brand: #90caf9;
+    --blue-sky: #3b5984;
+    --border-subtle: #243550;
+
+    --blue-main: #42a5f5;
+    --blue-deep: #90caf9;
+    --accent-primary: #2196f3;
+    --accent-primary-hover: #1976d2;
+    --accent-primary-fg: #ffffff;
+
+    --income-fg: #4ade80;
+    --income-bg: rgba(74, 222, 128, 0.14);
+    --expense-fg: #f87171;
+    --expense-bg: rgba(248, 113, 113, 0.14);
+
+    --chart-grid: #23334e;
+    --chart-expense: #90caf9;
+    --chart-axis: #9eb2c9;
+    --chart-point-stroke: #131c2e;
+
+    --scrollbar-track: #0b1220;
+    --scrollbar-thumb: #3b5984;
+
+    --shadow-card: 0 12px 30px -14px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0, 0, 0, 0.35);
+    --shadow-float: 0 24px 60px -16px rgba(0, 0, 0, 0.72);
+  }
+}
+
+:root[data-theme='dark'],
+:root:has(> head > meta[name='color-scheme'][content='dark']) {
+  color-scheme: dark;
+  --surface-white: #131c2e;
+  --surface-canvas: #0b1220;
+  --surface-tint: #1b2c47;
+  --surface-elevated: #172338;
+  --surface-hover: #19263e;
+  --backdrop-rgba: rgba(4, 9, 20, 0.65);
+
+  --text-primary: #eef4fc;
+  --text-muted: #9eb2c9;
+  --text-brand: #90caf9;
+  --blue-sky: #3b5984;
+  --border-subtle: #243550;
+
+  --blue-main: #42a5f5;
+  --blue-deep: #90caf9;
+  --accent-primary: #2196f3;
+  --accent-primary-hover: #1976d2;
+  --accent-primary-fg: #ffffff;
+
+  --income-fg: #4ade80;
+  --income-bg: rgba(74, 222, 128, 0.14);
+  --expense-fg: #f87171;
+  --expense-bg: rgba(248, 113, 113, 0.14);
+
+  --chart-grid: #23334e;
+  --chart-expense: #90caf9;
+  --chart-axis: #9eb2c9;
+  --chart-point-stroke: #131c2e;
+
+  --scrollbar-track: #0b1220;
+  --scrollbar-thumb: #3b5984;
+
+  --shadow-card: 0 12px 30px -14px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 24px 60px -16px rgba(0, 0, 0, 0.72);
 }

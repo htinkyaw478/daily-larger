@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
+import { getCategoryLabel } from '../../i18n/translations';
 import type { CategoryBreakdownItem, TransactionType } from '../../types/ledger';
 import { formatCurrency, type CurrencyCode } from '../../utils/formatters';
 
@@ -14,6 +16,7 @@ export function CategoryRing({
   currency: CurrencyCode;
   isLoading: boolean;
 }) {
+  const { language, t } = useI18n();
   const [mode, setMode] = useState<TransactionType>('expense');
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
@@ -29,14 +32,14 @@ export function CategoryRing({
   let cumulativeOffset = 0;
 
   return (
-    <section className="card" aria-label="Category Breakdown">
+    <section className="card" aria-label={t.analytics.categoriesTitle}>
       <div className="card-header">
         <div>
-          <h2 className="card-title">ကဏ္ဍခွဲခြမ်းစိတ်ဖြာမှု · Categories</h2>
-          <p className="card-caption">Share by category</p>
+          <h2 className="card-title">{t.analytics.categoriesTitle}</h2>
+          <p className="card-caption">{t.analytics.categoriesSubtitle}</p>
         </div>
 
-        <div className="period-pills" role="group" aria-label="Breakdown type">
+        <div className="period-pills" role="group" aria-label={t.entry.typeLegend}>
           <button
             type="button"
             className="period-pill"
@@ -46,7 +49,7 @@ export function CategoryRing({
               setHoveredId(null);
             }}
           >
-            ထွက်ငွေ
+            {t.entry.expense}
           </button>
           <button
             type="button"
@@ -57,14 +60,14 @@ export function CategoryRing({
               setHoveredId(null);
             }}
           >
-            ဝင်ငွေ
+            {t.entry.income}
           </button>
         </div>
       </div>
 
       {isLoading ? (
         <div style={{ height: 220, display: 'grid', placeItems: 'center', color: 'var(--text-muted)' }}>
-          Loading breakdown...
+          {t.analytics.loadingBreakdown}
         </div>
       ) : items.length === 0 ? (
         <div
@@ -79,18 +82,18 @@ export function CategoryRing({
             padding: '1rem',
           }}
         >
-          No {mode} entries in this period yet.
+          {t.analytics.noCategoryEntries(mode === 'expense' ? t.entry.expense : t.entry.income)}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.1rem' }}>
           <div style={{ position: 'relative', width: size, height: size }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Category ring chart">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t.analytics.categoriesTitle}>
               <circle
                 cx={size / 2}
                 cy={size / 2}
                 r={radius}
                 fill="none"
-                stroke="#E3F2FD"
+                stroke="var(--chart-grid)"
                 strokeWidth={strokeWidth}
               />
               {items.map((item) => {
@@ -136,11 +139,15 @@ export function CategoryRing({
               }}
             >
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                {activeItem ? (activeItem.nameMy ?? activeItem.name) : `Total ${mode}`}
+                {activeItem
+                  ? getCategoryLabel(activeItem, language)
+                  : mode === 'expense'
+                    ? t.analytics.totalExpenseCenter
+                    : t.analytics.totalIncomeCenter}
               </span>
               <span
                 className="font-display tabular-nums"
-                style={{ fontSize: '1.15rem', color: 'var(--blue-deep)', lineHeight: 1.2 }}
+                style={{ fontSize: '1.15rem', color: 'var(--text-brand)', lineHeight: 1.2 }}
               >
                 {formatCurrency(activeItem ? activeItem.total : total, currency)}
               </span>
@@ -191,7 +198,7 @@ export function CategoryRing({
                     }}
                   />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.nameMy ? `${item.nameMy} · ${item.name}` : item.name}
+                    {getCategoryLabel(item, language)}
                   </span>
                 </span>
                 <span className="tabular-nums" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>

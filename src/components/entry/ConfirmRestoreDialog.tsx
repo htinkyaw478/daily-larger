@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 
 export function ConfirmRestoreDialog({
   fileName,
@@ -13,6 +14,7 @@ export function ConfirmRestoreDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -41,13 +43,11 @@ export function ConfirmRestoreDialog({
   return (
     <dialog ref={dialogRef} className="confirm-dialog" aria-labelledby={titleId}>
       <h2 id={titleId} className="card-title" style={{ marginBottom: '0.5rem' }}>
-        Backup ပြန်သွင်းမည်လား · Restore Backup?
+        {t.dialogs.restoreTitle}
       </h2>
       {fileName && (
         <p style={{ margin: '0 0 1.25rem', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
-          Restoring <strong style={{ color: 'var(--text-primary)' }}>{fileName}</strong> will replace
-          {existingCount > 0 ? ` your current ${existingCount} local entries` : ' your local ledger data'}.
-          Consider downloading a backup first if you want to keep existing entries.
+          {t.dialogs.restoreBody(fileName, existingCount)}
         </p>
       )}
 
@@ -58,7 +58,7 @@ export function ConfirmRestoreDialog({
           autoFocus
           onClick={() => dialogRef.current?.close()}
         >
-          Cancel
+          {t.dialogs.cancel}
         </button>
         <button
           type="button"
@@ -66,7 +66,7 @@ export function ConfirmRestoreDialog({
           disabled={isRestoring || !fileName}
           onClick={onConfirm}
         >
-          {isRestoring ? 'Restoring...' : 'Restore Backup'}
+          {isRestoring ? t.dialogs.restoring : t.dialogs.restoreConfirm}
         </button>
       </div>
     </dialog>
