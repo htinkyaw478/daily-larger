@@ -1860,6 +1860,11 @@ dialog.import-dialog[open] {
   .app-frame--with-bottom-nav .toast-banner {
     bottom: calc(5.2rem + env(safe-area-inset-bottom));
   }
+
+  dialog.entry-dialog {
+    max-width: 100%;
+    border-left: 0;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1870,11 +1875,6 @@ dialog.import-dialog[open] {
 
   .quick-actions-row {
     grid-template-columns: 1fr;
-  }
-
-  dialog.entry-dialog {
-    max-width: 100%;
-    border-left: 0;
   }
 
   dialog.import-dialog {
