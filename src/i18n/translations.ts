@@ -148,6 +148,25 @@ export interface Translations {
     saveAndAnother: string;
     saveFailed: string;
   };
+  voice: {
+    sectionLabel: string;
+    startBtn: string;
+    tapHint: string;
+    stopBtn: string;
+    cancelBtn: string;
+    listening: string;
+    interimPlaceholder: string;
+    speechLangLabel: string;
+    heardLabel: string;
+    confirmSaveBtn: string;
+    clearTranscriptAria: string;
+    unsupportedNotice: string;
+    errNotAllowed: string;
+    errNoSpeech: string;
+    errNetwork: string;
+    errAudioCapture: string;
+    errGeneric: string;
+  };
   dialogs: {
     deleteTitle: string;
     deleteBody: (label: string, formattedAmount: string) => string;
@@ -414,6 +433,27 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       update: 'ပြင်ဆင်မှု သိမ်းမည်',
       saveAndAnother: 'သိမ်းပြီး ထပ်ထည့်မည်',
       saveFailed: 'စာရင်းသိမ်းဆည်း၍ မရပါ။',
+    },
+    voice: {
+      sectionLabel: 'အသံဖြင့် စာရင်းသွင်းရန်',
+      startBtn: 'အသံဖြင့် ထည့်ရန်',
+      tapHint: 'မိုက်ခလုတ်ကို နှိပ်ပြီး “Lunch 5000” ကဲ့သို့ ပြောပါ',
+      stopBtn: 'ပြီးပါပြီ',
+      cancelBtn: 'မလုပ်တော့ပါ',
+      listening: 'နားထောင်နေသည်...',
+      interimPlaceholder: 'အကြောင်းအရာနှင့် ပမာဏကို ပြောပါ...',
+      speechLangLabel: 'အသံဖမ်း ဘာသာစကား',
+      heardLabel: 'ဖမ်းယူရရှိသည့် စာသား',
+      confirmSaveBtn: 'အမြန်သိမ်းမည်',
+      clearTranscriptAria: 'အသံစာသား ရှင်းရန်',
+      unsupportedNotice:
+        'ဤ Browser တွင် အသံဖြင့် ထည့်သွင်းမှု မပံ့ပိုးပါ။ အောက်တွင် လက်ဖြင့် ရိုက်ထည့်ပေးပါ။',
+      errNotAllowed:
+        'မိုက်ခရိုဖုန်း ခွင့်ပြုချက် ပိတ်ထားပါသည်။ Browser ဆက်တင်တွင် ဖွင့်ပါ သို့မဟုတ် လက်ဖြင့် ထည့်ပါ။',
+      errNoSpeech: 'အသံမကြားရပါ။ မိုက်ခလုတ်ကို ပြန်နှိပ်၍ ထပ်ပြောကြည့်ပါ။',
+      errNetwork: 'အသံဖမ်းစနစ်အတွက် အင်တာနက် ချိတ်ဆက်မှု လိုအပ်ပါသည်။',
+      errAudioCapture: 'ဤစက်တွင် မိုက်ခရိုဖုန်း ရှာမတွေ့ပါ။',
+      errGeneric: 'အသံဖမ်း၍ မရပါ။ ထပ်မံကြိုးစားပါ သို့မဟုတ် လက်ဖြင့် ထည့်ပါ။',
     },
     dialogs: {
       deleteTitle: 'စာရင်း ဖျက်မည်လား',
@@ -689,6 +729,27 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       update: 'Update Entry',
       saveAndAnother: 'Save & Add Another',
       saveFailed: 'Unable to save entry.',
+    },
+    voice: {
+      sectionLabel: 'Voice entry input',
+      startBtn: 'Voice Entry',
+      tapHint: 'Tap mic and say e.g. "Lunch 5000 by KBZPay"',
+      stopBtn: 'Done',
+      cancelBtn: 'Cancel',
+      listening: 'Listening...',
+      interimPlaceholder: 'Speak item, amount, and optional method...',
+      speechLangLabel: 'Voice recognition language',
+      heardLabel: 'Heard',
+      confirmSaveBtn: 'Quick Save',
+      clearTranscriptAria: 'Dismiss recognized transcript',
+      unsupportedNotice:
+        'Voice input is unavailable in this browser. You can enter details below.',
+      errNotAllowed:
+        'Microphone permission was denied. Enable mic access in browser settings or enter manually.',
+      errNoSpeech: 'No speech detected. Tap the mic and try speaking clearly.',
+      errNetwork: 'Speech recognition needs a network connection on this browser.',
+      errAudioCapture: 'No microphone was detected on this device.',
+      errGeneric: 'Voice recognition could not complete. Try again or type manually.',
     },
     dialogs: {
       deleteTitle: 'Delete Entry?',
@@ -966,6 +1027,27 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       saveAndAnother: '저장 후 계속 추가',
       saveFailed: '항목을 저장할 수 없습니다.',
     },
+    voice: {
+      sectionLabel: '음성으로 내역 입력',
+      startBtn: '음성 입력',
+      tapHint: '마이크를 누르고 예: "점심 5000원"처럼 말씀하세요',
+      stopBtn: '완료',
+      cancelBtn: '취소',
+      listening: '듣고 있습니다...',
+      interimPlaceholder: '내용과 금액을 말씀해 주세요...',
+      speechLangLabel: '음성 인식 언어',
+      heardLabel: '인식된 내용',
+      confirmSaveBtn: '바로 저장',
+      clearTranscriptAria: '음성 인식 텍스트 닫기',
+      unsupportedNotice:
+        '이 브라우저에서는 음성 입력을 지원하지 않습니다. 아래에 직접 입력해 주세요.',
+      errNotAllowed:
+        '마이크 권한이 거부되었습니다. 브라우저 설정에서 허용하거나 직접 입력해 주세요.',
+      errNoSpeech: '음성이 감지되지 않았습니다. 마이크를 다시 눌러 말씀해 주세요.',
+      errNetwork: '이 브라우저의 음성 인식에는 인터넷 연결이 필요합니다.',
+      errAudioCapture: '기기에서 마이크를 찾을 수 없습니다.',
+      errGeneric: '음성 인식을 완료하지 못했습니다. 다시 시도하거나 직접 입력해 주세요.',
+    },
     dialogs: {
       deleteTitle: '항목을 삭제할까요?',
       deleteBody: (label, formattedAmount) =>
@@ -1240,6 +1322,27 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       update: '変更を保存',
       saveAndAnother: '保存して続けて追加',
       saveFailed: '保存に失敗しました。',
+    },
+    voice: {
+      sectionLabel: '音声入力',
+      startBtn: '音声で入力',
+      tapHint: 'マイクを押して例:「ランチ 1200円」と話してください',
+      stopBtn: '完了',
+      cancelBtn: 'キャンセル',
+      listening: '聞き取り中...',
+      interimPlaceholder: '内容と金額をお話しください...',
+      speechLangLabel: '音声認識の言語',
+      heardLabel: '認識結果',
+      confirmSaveBtn: 'このまま保存',
+      clearTranscriptAria: '認識テキストを閉じる',
+      unsupportedNotice:
+        'このブラウザは音声入力に対応していません。下のフォームに直接入力してください。',
+      errNotAllowed:
+        'マイクへのアクセスが拒否されました。ブラウザ設定で許可するか手動で入力してください。',
+      errNoSpeech: '音声が検出されませんでした。マイクを押してもう一度お話しください。',
+      errNetwork: '音声認識にはインターネット接続が必要です。',
+      errAudioCapture: 'この端末でマイクが見つかりませんでした。',
+      errGeneric: '音声入力を完了できませんでした。再試行するか手動で入力してください。',
     },
     dialogs: {
       deleteTitle: '明細を削除しますか？',

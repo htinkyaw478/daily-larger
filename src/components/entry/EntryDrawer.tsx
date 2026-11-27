@@ -1,6 +1,13 @@
-import { ArrowLeft } from 'lucide-react';
-import { FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, Mic, Square, X } from 'lucide-react';
+import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { DEFAULT_CATEGORIES } from '../../domain/ledgerLogic';
+import { parseVoiceTranscript } from '../../domain/voiceParser';
+import {
+  SPEECH_LANGUAGE_OPTIONS,
+  useVoiceInput,
+  type SpeechLangCode,
+  type VoiceErrorCode,
+} from '../../hooks/useVoiceInput';
 import { useI18n } from '../../i18n/I18nContext';
 import { getCategoryLabel, getPaymentMethodLabel } from '../../i18n/translations';
 import type {
@@ -76,16 +83,83 @@ export function EntryDrawer({
   const [amountInvalid, setAmountInvalid] = useState(false);
   const [amountErrorMsg, setAmountErrorMsg] = useState('');
   const [serverError, setServerError] = useState<string | null>(null);
+  const voiceLangSelectId = useId();
 
   const filteredCategories = useMemo(
     () => effectiveCategories.filter((c) => c.type === type),
     [effectiveCategories, type]
   );
 
+  const handleParsedVoice = useCallback(
+    (transcript: string) => {
+      const parsed = parseVoiceTranscript(transcript, effectiveCategories);
+      setServerError(null);
+
+      if (parsed.type) {
+        setType(parsed.type);
+      }
+      if (parsed.amount !== null) {
+        setAmountStr(String(parsed.amount));
+        setAmountInvalid(false);
+        setAmountErrorMsg('');
+      }
+      if (parsed.categoryId !== null) {
+        setCategoryId(parsed.categoryId);
+      }
+      if (parsed.paymentMethod) {
+        setPaymentMethod(parsed.paymentMethod);
+      }
+      if (parsed.transactionDate) {
+        setTransactionDate(parsed.transactionDate);
+      }
+      if (parsed.note) {
+        setNote(parsed.note);
+      }
+    },
+    [effectiveCategories]
+  );
+
+  const {
+    isSupported: isVoiceSupported,
+    speechLang,
+    setSpeechLang,
+    status: voiceStatus,
+    interimTranscript,
+    finalTranscript,
+    errorCode: voiceErrorCode,
+    startListening,
+    stopListening,
+    cancelListening,
+    clearFeedback: clearVoiceFeedback,
+  } = useVoiceInput({
+    defaultLang: 'en-US',
+    onResultTranscript: handleParsedVoice,
+  });
+
+  const getVoiceErrorMessage = (code: VoiceErrorCode | null): string | null => {
+    if (!code) return null;
+    switch (code) {
+      case 'not-allowed':
+        return t.voice.errNotAllowed;
+      case 'no-speech':
+        return t.voice.errNoSpeech;
+      case 'network':
+        return t.voice.errNetwork;
+      case 'audio-capture':
+        return t.voice.errAudioCapture;
+      case 'unsupported':
+        return t.voice.unsupportedNotice;
+      default:
+        return t.voice.errGeneric;
+    }
+  };
+
   // Sync form state ONLY when opening or switching editingTx (never wipe typed input when categories load)
   useEffect(() => {
     if (!isOpen) {
       wasOpenRef.current = false;
+      cancelListening();
+      clearVoiceFeedback();
       return;
     }
 
@@ -117,6 +191,8 @@ export function EntryDrawer({
       setPaymentMethod('Cash');
       setNote('');
     }
+    // Stop active speech recognition on drawer close/reset
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editingTx, initialType, effectiveCategories]);
 
   // Keep categoryId aligned when switching between Income and Expense
@@ -239,6 +315,7 @@ export function EntryDrawer({
         setNote('');
         setAmountInvalid(false);
         setAmountErrorMsg('');
+        clearVoiceFeedback();
         amountInputRef.current?.focus();
       }
     } catch (err) {
@@ -253,6 +330,10 @@ export function EntryDrawer({
       dialogRef.current?.close();
     }
   };
+
+  const parsedAmountPreview = Number(normalizeNumericInput(amountStr));
+  const hasValidAmount = Number.isFinite(parsedAmountPreview) && parsedAmountPreview > 0;
+  const voiceErrorMessage = getVoiceErrorMessage(voiceErrorCode);
 
   return (
     <dialog
@@ -284,6 +365,123 @@ export function EntryDrawer({
         noValidate
       >
         <div className="dialog-body">
+          <section
+            className={`voice-entry-card${voiceStatus === 'listening' ? ' is-listening' : ''}`}
+            aria-label={t.voice.sectionLabel}
+          >
+            {voiceStatus === 'listening' ? (
+              <div className="voice-listening-box">
+                <div className="voice-listening-head">
+                  <span className="voice-pulse-badge" aria-hidden="true">
+                    <Mic size={16} />
+                  </span>
+                  <span className="voice-listening-label" role="status" aria-live="polite">
+                    {t.voice.listening}
+                  </span>
+                </div>
+
+                <p className="voice-transcript-box" aria-live="polite">
+                  {interimTranscript || t.voice.interimPlaceholder}
+                </p>
+
+                <div className="voice-action-pair">
+                  <button
+                    type="button"
+                    className="btn btn-primary voice-action-btn"
+                    onClick={stopListening}
+                  >
+                    <Square size={14} aria-hidden="true" />
+                    <span>{t.voice.stopBtn}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary voice-action-btn"
+                    onClick={cancelListening}
+                  >
+                    <span>{t.voice.cancelBtn}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="voice-controls-row">
+                  <button
+                    type="button"
+                    className="btn voice-mic-btn"
+                    disabled={!isVoiceSupported || isSaving}
+                    aria-disabled={!isVoiceSupported ? 'true' : undefined}
+                    onClick={startListening}
+                  >
+                    <Mic size={18} aria-hidden="true" />
+                    <span>{t.voice.startBtn}</span>
+                  </button>
+
+                  {isVoiceSupported && (
+                    <div className="voice-lang-wrap">
+                      <label htmlFor={voiceLangSelectId} className="visually-hidden">
+                        {t.voice.speechLangLabel}
+                      </label>
+                      <select
+                        id={voiceLangSelectId}
+                        className="control-select voice-lang-select"
+                        value={speechLang}
+                        onChange={(e) => setSpeechLang(e.target.value as SpeechLangCode)}
+                      >
+                        {SPEECH_LANGUAGE_OPTIONS.map((opt) => (
+                          <option key={opt.code} value={opt.code}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {!isVoiceSupported ? (
+                  <p className="voice-unsupported-note">{t.voice.unsupportedNotice}</p>
+                ) : (
+                  <p className="voice-hint-text">{t.voice.tapHint}</p>
+                )}
+              </>
+            )}
+
+            {voiceErrorMessage && voiceStatus === 'error' && (
+              <div role="alert" className="voice-error-banner">
+                {voiceErrorMessage}
+              </div>
+            )}
+
+            {finalTranscript && voiceStatus !== 'listening' && (
+              <div role="status" aria-live="polite" className="voice-result-banner">
+                <div className="voice-result-content">
+                  <span className="voice-result-label">{t.voice.heardLabel}:</span>{' '}
+                  <span className="voice-result-text">“{finalTranscript}”</span>
+                </div>
+                <div className="voice-result-actions">
+                  {hasValidAmount && (
+                    <button
+                      type="button"
+                      className="btn btn-primary voice-confirm-btn"
+                      disabled={isSaving}
+                      onClick={(e) => handleSubmit(e, false)}
+                    >
+                      <Check size={14} aria-hidden="true" />
+                      <span>{t.voice.confirmSaveBtn}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-ghost voice-dismiss-btn"
+                    aria-label={t.voice.clearTranscriptAria}
+                    onClick={clearVoiceFeedback}
+                  >
+                    <X size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+
           <fieldset className="segmented-toggle">
             <legend className="visually-hidden">{t.entry.typeLegend}</legend>
             <label className="segmented-option segmented-option--income">

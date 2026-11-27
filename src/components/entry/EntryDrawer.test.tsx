@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_CATEGORIES } from '../../domain/ledgerLogic';
+import { mapSpeechError } from '../../hooks/useVoiceInput';
 import { I18nContext } from '../../i18n/I18nContext';
 import { TRANSLATIONS, type LanguageCode } from '../../i18n/translations';
-import { DEFAULT_CATEGORIES } from '../../domain/ledgerLogic';
 import type { Transaction } from '../../types/ledger';
 import { EntryDrawer } from './EntryDrawer';
 
@@ -30,7 +31,16 @@ function renderDrawer(lang: LanguageCode, editingTx: Transaction | null = null) 
   );
 }
 
-describe('EntryDrawer mobile header and horizontal save actions', () => {
+describe('EntryDrawer mobile header, tabs, voice input, and horizontal save actions', () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+
+  afterEach(() => {
+    if (originalWindow === undefined) {
+      delete (globalThis as { window?: unknown }).window;
+    } else {
+      (globalThis as { window?: unknown }).window = originalWindow;
+    }
+  });
   it('renders a top-left minimal back-arrow button instead of a close X button', () => {
     const htmlEn = renderDrawer('en');
     expect(htmlEn).toContain('class="dialog-header entry-dialog-header"');
@@ -86,5 +96,40 @@ describe('EntryDrawer mobile header and horizontal save actions', () => {
       expect(incomeIdx).toBeGreaterThan(-1);
       expect(expenseIdx).toBeGreaterThan(incomeIdx);
     }
+  });
+
+  it('renders mobile-friendly Voice Input controls with graceful fallback when SpeechRecognition is unavailable', () => {
+    const html = renderDrawer('en');
+    expect(html).toContain('class="voice-entry-card"');
+    expect(html).toContain('class="btn voice-mic-btn"');
+    expect(html).toContain('type="button"');
+    expect(html).toContain('Voice Entry');
+    expect(html).toContain('Voice input is unavailable in this browser.');
+
+    const htmlMy = renderDrawer('my');
+    expect(htmlMy).toContain('အသံဖြင့် ထည့်ရန်');
+  });
+
+  it('renders enabled Voice Input trigger with en-US default and language selector when webkitSpeechRecognition is available', () => {
+    (globalThis as { window: unknown }).window = {
+      webkitSpeechRecognition: class {},
+    };
+
+    const html = renderDrawer('en');
+    expect(html).toContain('class="btn voice-mic-btn"');
+    expect(html).not.toContain('aria-disabled="true"');
+    expect(html).toContain('voice-lang-select');
+    expect(html).toContain('<option value="en-US" selected="">English (US)</option>');
+    expect(html).toContain('<option value="my-MM">မြန်မာ (MM)</option>');
+    expect(html).toContain('Tap mic and say');
+  });
+
+  it('maps Web Speech API errors consistently across mobile browsers', () => {
+    expect(mapSpeechError('not-allowed')).toBe('not-allowed');
+    expect(mapSpeechError('service-not-allowed')).toBe('not-allowed');
+    expect(mapSpeechError('no-speech')).toBe('no-speech');
+    expect(mapSpeechError('network')).toBe('network');
+    expect(mapSpeechError('audio-capture')).toBe('audio-capture');
+    expect(mapSpeechError('other')).toBe('unknown');
   });
 });
