@@ -461,6 +461,29 @@ const SCALE_WORDS: Record<string, number> = {
   million: 1000000,
 };
 
+const MYANMAR_UNIT_WORDS: Record<string, number> = {
+  'တစ်': 1,
+  'တ': 1,
+  'နှစ်': 2,
+  'သုံး': 3,
+  'လေး': 4,
+  'ငါး': 5,
+  'ခြောက်': 6,
+  'ခုနစ်': 7,
+  'ခုနှစ်': 7,
+  'ရှစ်': 8,
+  'ကိုး': 9,
+  'ဆယ်': 10,
+};
+
+const MYANMAR_SCALE_WORDS: Record<string, number> = {
+  'ရာ': 100,
+  'ထောင်': 1000,
+  'သောင်း': 10000,
+  'သိန်း': 100000,
+  'သန်း': 1000000,
+};
+
 function normalizeDigits(text: string): string {
   return text
     .replace(/[\u1040-\u1049]/g, (ch) => String(ch.charCodeAt(0) - 0x1040))
@@ -523,55 +546,173 @@ function parseSpokenNumberWords(text: string): { value: number; matchedText: str
   };
 }
 
-function extractNumericAmount(text: string): { amount: number | null; matchedSpan: string | null } {
-  const currencyRegex =
-    /(?:[$₩¥]|(?:ks|mmk|kyats?|won|krw|yen|jpy|dollars?|usd|ကျပ်|원|엔|円)\b)\s*(\d[\d,]*(?:\.\d+)?)(?:\s*(k|thousand|hundred)\b)?|(\d[\d,]*(?:\.\d+)?)(?:\s*(k|thousand|hundred)\b)?\s*(?:ks|mmk|kyats?|won|krw|yen|jpy|dollars?|usd|ကျပ်|원|엔|円|[$₩¥])(?=\b|[^a-z0-9]|$)/gi;
+function parseMyanmarSpokenAmount(text: string): { value: number; matchedText: string } | null {
+  const partRegex =
+    /(တစ်|တ|နှစ်|သုံး|လေး|ငါး|ခြောက်|ခုနစ်|ခုနှစ်|ရှစ်|ကိုး|ဆယ်)\s*(သန်း|သိန်း|သောင်း|ထောင်|ရာ)[့]?(ခွဲ)?(?=[\s,.;:!?()\-/]|တစ်|နှစ်|သုံး|လေး|ငါး|ခြောက်|ခုနစ်|ခုနှစ်|ရှစ်|ကိုး|ဆယ်|ကျပ်|$)/gu;
 
-  const parseScaled = (numStr: string, scale?: string): number | null => {
-    const base = Number(numStr.replace(/,/g, ''));
-    if (!Number.isFinite(base) || base <= 0) return null;
-    const s = scale?.toLowerCase();
-    const mult = s === 'k' || s === 'thousand' ? 1000 : s === 'hundred' ? 100 : 1;
-    return Number((base * mult).toFixed(2));
-  };
+  const segments: Array<{
+    start: number;
+    end: number;
+    scale: number;
+    amount: number;
+  }> = [];
 
-  const currencyMatch = currencyRegex.exec(text);
-  if (currencyMatch) {
-    const numStr = currencyMatch[1] ?? currencyMatch[3];
-    const scaleStr = currencyMatch[2] ?? currencyMatch[4];
-    const parsed = parseScaled(numStr, scaleStr);
-    if (parsed !== null) {
-      return { amount: parsed, matchedSpan: currencyMatch[0] };
+  let match: RegExpExecArray | null;
+  while ((match = partRegex.exec(text)) !== null) {
+    const unit = MYANMAR_UNIT_WORDS[match[1]];
+    const scale = MYANMAR_SCALE_WORDS[match[2]];
+    if (!unit || !scale) continue;
+    const halfBonus = match[3] ? 0.5 * scale : 0;
+    segments.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      scale,
+      amount: unit * scale + halfBonus,
+    });
+  }
+
+  if (segments.length === 0) return null;
+
+  // Combine consecutive descending Myanmar unit+scale phrases like "တစ်သိန်း ငါးသောင်း"
+  let groupStart = segments[0].start;
+  let groupEnd = segments[0].end;
+  let groupTotal = segments[0].amount;
+  let prevScale = segments[0].scale;
+
+  for (let i = 1; i < segments.length; i++) {
+    const seg = segments[i];
+    const between = text.slice(groupEnd, seg.start);
+    if (/^\s*$/.test(between) && seg.scale < prevScale) {
+      groupEnd = seg.end;
+      groupTotal += seg.amount;
+      prevScale = seg.scale;
+    } else {
+      break;
     }
   }
 
-  const genericRegex = /\b(\d[\d,]*(?:\.\d+)?)(?:\s*(k|thousand|hundred)\b)?/gi;
-  const candidates: Array<{ amount: number; matchedSpan: string }> = [];
+  return {
+    value: groupTotal,
+    matchedText: text.slice(groupStart, groupEnd),
+  };
+}
+
+function extractNumericAmount(text: string): { amount: number | null; matchedSpan: string | null } {
+  const parseScaled = (
+    numStr: string,
+    asciiScale?: string,
+    myScale?: string,
+    halfMarker?: string
+  ): { amount: number; scale: number } | null => {
+    const base = Number(numStr.replace(/,/g, ''));
+    if (!Number.isFinite(base) || base <= 0) return null;
+    let mult = 1;
+    if (asciiScale) {
+      const s = asciiScale.toLowerCase();
+      mult = s === 'k' || s === 'thousand' ? 1000 : s === 'hundred' ? 100 : 1;
+    } else if (myScale && myScale in MYANMAR_SCALE_WORDS) {
+      mult = MYANMAR_SCALE_WORDS[myScale];
+    }
+    const halfBonus = halfMarker && mult > 1 ? 0.5 * mult : 0;
+    return {
+      amount: Number((base * mult + halfBonus).toFixed(2)),
+      scale: mult,
+    };
+  };
+
+  const scalePattern =
+    '(?:\\s*(?:(k|thousand|hundred)\\b|(ရာ|ထောင်|သောင်း|သိန်း|သန်း)[့]?(ခွဲ)?(?=[\\s,.;:!?()\\-/]|ကျပ်|mmk|ks|\\d|$)))?';
+
+  const genericRegex = new RegExp(
+    `\\b(\\d[\\d,]*(?:\\.\\d+)?)${scalePattern}`,
+    'giu'
+  );
+  const candidates: Array<{
+    amount: number;
+    scale: number;
+    start: number;
+    end: number;
+  }> = [];
   let match: RegExpExecArray | null;
   while ((match = genericRegex.exec(text)) !== null) {
     // Ignore ISO date segments like 2026-11-27
     const before = text[match.index - 1] ?? '';
     const after = text[match.index + match[0].length] ?? '';
     if (before === '-' || after === '-') continue;
-    const parsed = parseScaled(match[1], match[2]);
+    const parsed = parseScaled(match[1], match[2], match[3], match[4]);
     if (parsed !== null) {
-      candidates.push({ amount: parsed, matchedSpan: match[0] });
+      candidates.push({
+        amount: parsed.amount,
+        scale: parsed.scale,
+        start: match.index,
+        end: match.index + match[0].length,
+      });
     }
   }
 
-  if (candidates.length > 0) {
+  // Merge adjacent descending Myanmar digit+scale chunks like "1 သိန်း 5 သောင်း" -> 150000
+  const prefixCurrencyRe =
+    /(?:[$₩¥]|\b(?:ks|mmk|kyats?|won|krw|yen|jpy|dollars?|usd)\b|ကျပ်|원|엔|円)\s*$/iu;
+  const postfixCurrencyRe =
+    /^\s*(?:\b(?:ks|mmk|kyats?|won|krw|yen|jpy|dollars?|usd)\b|ကျပ်|원|엔|円|[$₩¥])(?=$|[\s,.;:!?()\-/]|[^a-z0-9])/iu;
+
+  const merged: Array<{ amount: number; matchedSpan: string; hasCurrency: boolean }> = [];
+  for (let i = 0; i < candidates.length; i++) {
+    let total = candidates[i].amount;
+    let spanStart = candidates[i].start;
+    let spanEnd = candidates[i].end;
+    let prevScale = candidates[i].scale;
+
+    while (
+      i + 1 < candidates.length &&
+      prevScale >= 100 &&
+      candidates[i + 1].scale >= 100 &&
+      candidates[i + 1].scale < prevScale &&
+      /^\s*$/.test(text.slice(spanEnd, candidates[i + 1].start))
+    ) {
+      i++;
+      total += candidates[i].amount;
+      spanEnd = candidates[i].end;
+      prevScale = candidates[i].scale;
+    }
+
+    let hasCurrency = false;
+    const prefixMatch = prefixCurrencyRe.exec(text.slice(0, spanStart));
+    if (prefixMatch) {
+      hasCurrency = true;
+      spanStart -= prefixMatch[0].length;
+    }
+    const postfixMatch = postfixCurrencyRe.exec(text.slice(spanEnd));
+    if (postfixMatch) {
+      hasCurrency = true;
+      spanEnd += postfixMatch[0].length;
+    }
+
+    merged.push({
+      amount: total,
+      matchedSpan: text.slice(spanStart, spanEnd),
+      hasCurrency,
+    });
+  }
+
+  if (merged.length > 0) {
+    const currencyTagged = merged.filter((c) => c.hasCurrency);
+    const pool = currencyTagged.length > 0 ? currencyTagged : merged;
     // Prefer amounts >= 10 or the last explicit number (e.g., "2 coffees 6000")
-    const significant = candidates.filter((c) => c.amount >= 10);
+    const significant = pool.filter((c) => c.amount >= 10);
     const chosen =
-      significant.length > 0
-        ? significant[significant.length - 1]
-        : candidates[candidates.length - 1];
+      significant.length > 0 ? significant[significant.length - 1] : pool[pool.length - 1];
     return { amount: chosen.amount, matchedSpan: chosen.matchedSpan };
   }
 
   const spoken = parseSpokenNumberWords(text);
   if (spoken) {
     return { amount: spoken.value, matchedSpan: spoken.matchedText };
+  }
+
+  const mySpoken = parseMyanmarSpokenAmount(text);
+  if (mySpoken) {
+    return { amount: mySpoken.value, matchedSpan: mySpoken.matchedText };
   }
 
   return { amount: null, matchedSpan: null };
@@ -627,6 +768,7 @@ function cleanNoteText(
     .replace(/(?:[$₩¥]|ကျပ်|원|엔|円)/gu, ' ')
     .replace(/\b(?:paid\s+for|spent\s+on|paid\s+by|paid\s+with|paid|spent|bought|received|earned|expense|income)\b/gi, ' ')
     .replace(/\b(?:by|with|via|using|for)\b\s*$/gi, ' ')
+    .replace(/(?:\s+(?:နဲ့|နှင့်|ဖြင့်|မှ))+\s*$/gu, ' ')
     .replace(/^\s*(?:for|on|by|with|via)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')

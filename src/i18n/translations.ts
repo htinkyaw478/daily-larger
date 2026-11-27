@@ -162,10 +162,16 @@ export interface Translations {
     clearTranscriptAria: string;
     unsupportedNotice: string;
     errNotAllowed: string;
+    errServiceNotAllowed: string;
+    errLanguageUnsupported: string;
     errNoSpeech: string;
     errNetwork: string;
     errAudioCapture: string;
     errGeneric: string;
+    dictateLabel: string;
+    dictatePlaceholder: string;
+    dictateApplyBtn: string;
+    switchToEnglishMic: string;
   };
   dialogs: {
     deleteTitle: string;
@@ -449,11 +455,19 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       unsupportedNotice:
         'ဤ Browser တွင် အသံဖြင့် ထည့်သွင်းမှု မပံ့ပိုးပါ။ အောက်တွင် လက်ဖြင့် ရိုက်ထည့်ပေးပါ။',
       errNotAllowed:
-        'မိုက်ခရိုဖုန်း ခွင့်ပြုချက် ပိတ်ထားပါသည်။ Browser ဆက်တင်တွင် ဖွင့်ပါ သို့မဟုတ် လက်ဖြင့် ထည့်ပါ။',
+        'မိုက်ခရိုဖုန်း ခွင့်ပြုချက် ပိတ်ထားပါသည်။ Browser ဆက်တင်တွင် ဖွင့်ပါ သို့မဟုတ် အောက်တွင် ရိုက်ထည့်ပါ။',
+      errServiceNotAllowed:
+        'စက်ပစ္စည်း သို့မဟုတ် Browser ၏ အသံဖမ်းစနစ် ပိတ်ထားပါသည်။ ဆက်တင်တွင် ဖွင့်ပါ သို့မဟုတ် အောက်တွင် ရိုက်ထည့်ပါ။',
+      errLanguageUnsupported:
+        'ဤ Browser ၏ တိုက်ရိုက် အသံဖမ်းစနစ်သည် ရွေးထားသော ဘာသာစကားကို မပံ့ပိုးပါ။ ဖုန်း Keyboard မိုက်ဖြင့် အောက်တွင် ရိုက်/ပြောထည့်ပါ သို့မဟုတ် English မိုက်သို့ ပြောင်းပါ။',
       errNoSpeech: 'အသံမကြားရပါ။ မိုက်ခလုတ်ကို ပြန်နှိပ်၍ ထပ်ပြောကြည့်ပါ။',
       errNetwork: 'အသံဖမ်းစနစ်အတွက် အင်တာနက် ချိတ်ဆက်မှု လိုအပ်ပါသည်။',
       errAudioCapture: 'ဤစက်တွင် မိုက်ခရိုဖုန်း ရှာမတွေ့ပါ။',
       errGeneric: 'အသံဖမ်း၍ မရပါ။ ထပ်မံကြိုးစားပါ သို့မဟုတ် လက်ဖြင့် ထည့်ပါ။',
+      dictateLabel: 'Keyboard အသံ/စာသားဖြင့် အမြန်ဖြည့်ရန်',
+      dictatePlaceholder: 'Keyboard မိုက် သို့မဟုတ် စာရိုက်ထည့်ပါ (ဥပမာ - နေ့လယ်စာ ၅၀၀၀)',
+      dictateApplyBtn: 'ဖြည့်သွင်းမည်',
+      switchToEnglishMic: 'English မိုက်သို့ ပြောင်းမည်',
     },
     dialogs: {
       deleteTitle: 'စာရင်း ဖျက်မည်လား',
@@ -745,11 +759,19 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       unsupportedNotice:
         'Voice input is unavailable in this browser. You can enter details below.',
       errNotAllowed:
-        'Microphone permission was denied. Enable mic access in browser settings or enter manually.',
+        'Microphone permission was denied. Enable mic access in browser settings or enter below.',
+      errServiceNotAllowed:
+        'Speech recognition service is blocked by this browser or device settings. Enable Dictation or type below.',
+      errLanguageUnsupported:
+        'Direct browser mic recognition does not support the selected language here. Dictate using your phone keyboard mic below, or switch mic to English.',
       errNoSpeech: 'No speech detected. Tap the mic and try speaking clearly.',
       errNetwork: 'Speech recognition needs a network connection on this browser.',
       errAudioCapture: 'No microphone was detected on this device.',
       errGeneric: 'Voice recognition could not complete. Try again or type manually.',
+      dictateLabel: 'Quick dictate or type',
+      dictatePlaceholder: 'Type or use keyboard mic (e.g. Lunch 5000)',
+      dictateApplyBtn: 'Apply',
+      switchToEnglishMic: 'Switch Mic to English',
     },
     dialogs: {
       deleteTitle: 'Delete Entry?',
@@ -1042,11 +1064,19 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       unsupportedNotice:
         '이 브라우저에서는 음성 입력을 지원하지 않습니다. 아래에 직접 입력해 주세요.',
       errNotAllowed:
-        '마이크 권한이 거부되었습니다. 브라우저 설정에서 허용하거나 직접 입력해 주세요.',
+        '마이크 권한이 거부되었습니다. 브라우저 설정에서 허용하거나 아래에 입력해 주세요.',
+      errServiceNotAllowed:
+        '브라우저 또는 기기 설정에서 음성 인식 서비스가 차단되어 있습니다. 받아쓰기를 허용하거나 아래에 입력해 주세요.',
+      errLanguageUnsupported:
+        '이 브라우저는 선택한 언어의 직접 음성 인식을 지원하지 않습니다. 아래 입력창에서 키보드 마이크로 입력하거나 영어로 전환해 주세요.',
       errNoSpeech: '음성이 감지되지 않았습니다. 마이크를 다시 눌러 말씀해 주세요.',
       errNetwork: '이 브라우저의 음성 인식에는 인터넷 연결이 필요합니다.',
       errAudioCapture: '기기에서 마이크를 찾을 수 없습니다.',
       errGeneric: '음성 인식을 완료하지 못했습니다. 다시 시도하거나 직접 입력해 주세요.',
+      dictateLabel: '키보드 받아쓰기 / 빠른 입력',
+      dictatePlaceholder: '키보드 마이크 또는 직접 입력 (예: 점심 5000원)',
+      dictateApplyBtn: '적용',
+      switchToEnglishMic: '영어 마이크로 전환',
     },
     dialogs: {
       deleteTitle: '항목을 삭제할까요?',
@@ -1338,11 +1368,19 @@ export const TRANSLATIONS: Record<LanguageCode, Translations> = {
       unsupportedNotice:
         'このブラウザは音声入力に対応していません。下のフォームに直接入力してください。',
       errNotAllowed:
-        'マイクへのアクセスが拒否されました。ブラウザ設定で許可するか手動で入力してください。',
+        'マイクへのアクセスが拒否されました。ブラウザ設定で許可するか下に入力してください。',
+      errServiceNotAllowed:
+        'ブラウザまたは端末設定で音声認識サービスが無効になっています。音声入力を有効にするか下に入力してください。',
+      errLanguageUnsupported:
+        'このブラウザは選択した言語の直接音声認識に対応していません。下の入力欄でキーボードのマイクを使うか、英語に切替えてください。',
       errNoSpeech: '音声が検出されませんでした。マイクを押してもう一度お話しください。',
       errNetwork: '音声認識にはインターネット接続が必要です。',
       errAudioCapture: 'この端末でマイクが見つかりませんでした。',
       errGeneric: '音声入力を完了できませんでした。再試行するか手動で入力してください。',
+      dictateLabel: 'キーボード音声 / クイック入力',
+      dictatePlaceholder: 'キーボードマイクまたは入力 (例: ランチ 1200円)',
+      dictateApplyBtn: '反映',
+      switchToEnglishMic: '英語のマイクに切替',
     },
     dialogs: {
       deleteTitle: '明細を削除しますか？',

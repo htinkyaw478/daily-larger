@@ -99,4 +99,33 @@ describe('parseVoiceTranscript', () => {
     expect(parsed.amount).toBe(4800);
     expect(parsed.categoryId).toBe(6);
   });
+
+  it('parses Myanmar numeric scales, half markers, spoken Burmese units, and particles', () => {
+    const lunch = parseVoiceTranscript('နေ့လယ်စာ ၅ ထောင် KBZPay နဲ့', DEFAULT_CATEGORIES, REF_DATE);
+    expect(lunch.amount).toBe(5000);
+    expect(lunch.type).toBe('expense');
+    expect(lunch.categoryId).toBe(6);
+    expect(lunch.paymentMethod).toBe('KBZPay');
+    expect(lunch.note).toBe('နေ့လယ်စာ');
+
+    const salary = parseVoiceTranscript('လစာ ၃.၅ သိန်း ဘဏ်လွှဲ', DEFAULT_CATEGORIES, REF_DATE);
+    expect(salary.amount).toBe(350000);
+    expect(salary.type).toBe('income');
+    expect(salary.categoryId).toBe(1);
+    expect(salary.paymentMethod).toBe('Bank Transfer');
+
+    const compound = parseVoiceTranscript('အိမ်လခ ၁ သိန်း ၅ သောင်း ကျပ်', DEFAULT_CATEGORIES, REF_DATE);
+    expect(compound.amount).toBe(150000);
+
+    const halfScale = parseVoiceTranscript('ကော်ဖီ ၁ ထောင်ခွဲ', DEFAULT_CATEGORIES, REF_DATE);
+    expect(halfScale.amount).toBe(1500);
+    expect(halfScale.categoryId).toBe(6);
+
+    const spokenWords = parseVoiceTranscript('လစာ နှစ်သိန်းခွဲ ဘဏ်လွှဲ', DEFAULT_CATEGORIES, REF_DATE);
+    expect(spokenWords.amount).toBe(250000);
+    expect(spokenWords.type).toBe('income');
+
+    const nonMoneyWord = parseVoiceTranscript('ငါး ဟင်း ၃၀၀၀ ကျပ်', DEFAULT_CATEGORIES, REF_DATE);
+    expect(nonMoneyWord.amount).toBe(3000);
+  });
 });

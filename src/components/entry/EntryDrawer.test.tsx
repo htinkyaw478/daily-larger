@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CATEGORIES } from '../../domain/ledgerLogic';
-import { mapSpeechError } from '../../hooks/useVoiceInput';
+import { getMyanmarFallbackLang, mapSpeechError } from '../../hooks/useVoiceInput';
 import { I18nContext } from '../../i18n/I18nContext';
 import { TRANSLATIONS, type LanguageCode } from '../../i18n/translations';
 import type { Transaction } from '../../types/ledger';
@@ -98,16 +98,19 @@ describe('EntryDrawer mobile header, tabs, voice input, and horizontal save acti
     }
   });
 
-  it('renders mobile-friendly Voice Input controls with graceful fallback when SpeechRecognition is unavailable', () => {
+  it('renders mobile-friendly Voice Input controls with graceful keyboard dictation fallback when SpeechRecognition is unavailable', () => {
     const html = renderDrawer('en');
     expect(html).toContain('class="voice-entry-card"');
     expect(html).toContain('class="btn voice-mic-btn"');
     expect(html).toContain('type="button"');
     expect(html).toContain('Voice Entry');
     expect(html).toContain('Voice input is unavailable in this browser.');
+    expect(html).toContain('voice-dictate-input');
+    expect(html).toContain('voice-dictate-btn');
 
     const htmlMy = renderDrawer('my');
     expect(htmlMy).toContain('အသံဖြင့် ထည့်ရန်');
+    expect(htmlMy).toContain('ဖြည့်သွင်းမည်');
   });
 
   it('renders enabled Voice Input trigger with en-US default and language selector when webkitSpeechRecognition is available', () => {
@@ -124,12 +127,22 @@ describe('EntryDrawer mobile header, tabs, voice input, and horizontal save acti
     expect(html).toContain('Tap mic and say');
   });
 
-  it('maps Web Speech API errors consistently across mobile browsers', () => {
-    expect(mapSpeechError('not-allowed')).toBe('not-allowed');
-    expect(mapSpeechError('service-not-allowed')).toBe('not-allowed');
+  it('maps Web Speech API errors cleanly including Myanmar unsupported vs mic permission denied', () => {
+    expect(mapSpeechError('not-allowed', 'en-US')).toBe('not-allowed');
+    expect(mapSpeechError('not-allowed', 'my-MM')).toBe('not-allowed');
+    expect(mapSpeechError('language-not-supported', 'my-MM')).toBe('language-not-supported');
+    expect(mapSpeechError('service-not-allowed', 'my-MM')).toBe('language-not-supported');
+    expect(mapSpeechError('service-not-allowed', 'my')).toBe('language-not-supported');
+    expect(mapSpeechError('service-not-allowed', 'en-US')).toBe('service-not-allowed');
+    expect(mapSpeechError('service-not-allowed', 'ko-KR')).toBe('service-not-allowed');
     expect(mapSpeechError('no-speech')).toBe('no-speech');
     expect(mapSpeechError('network')).toBe('network');
     expect(mapSpeechError('audio-capture')).toBe('audio-capture');
     expect(mapSpeechError('other')).toBe('unknown');
+
+    expect(getMyanmarFallbackLang('my-MM', false, 'language-not-supported')).toBe('my');
+    expect(getMyanmarFallbackLang('my', true, 'language-not-supported')).toBeNull();
+    expect(getMyanmarFallbackLang('my-MM', false, 'not-allowed')).toBeNull();
+    expect(getMyanmarFallbackLang('en-US', false, 'service-not-allowed')).toBeNull();
   });
 });

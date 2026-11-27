@@ -16,6 +16,8 @@ export type VoiceInputStatus = 'idle' | 'listening' | 'error';
 
 export type VoiceErrorCode =
   | 'not-allowed'
+  | 'service-not-allowed'
+  | 'language-not-supported'
   | 'no-speech'
   | 'network'
   | 'audio-capture'
@@ -74,11 +76,29 @@ export function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor 
   return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
 }
 
-export function mapSpeechError(rawError: string): VoiceErrorCode {
+export function getMyanmarFallbackLang(
+  targetLang: string,
+  triedFallback: boolean,
+  mappedError: VoiceErrorCode
+): 'my' | null {
+  if (!triedFallback && targetLang === 'my-MM' && mappedError === 'language-not-supported') {
+    return 'my';
+  }
+  return null;
+}
+
+export function mapSpeechError(rawError: string, lang?: string): VoiceErrorCode {
   switch (rawError) {
     case 'not-allowed':
-    case 'service-not-allowed':
       return 'not-allowed';
+    case 'language-not-supported':
+      return 'language-not-supported';
+    case 'service-not-allowed':
+      // Safari / WebKit emits 'service-not-allowed' when a speech locale (e.g. my-MM / my)
+      // lacks an OS dictation model, even though microphone permission is granted.
+      return lang === 'my-MM' || lang === 'my'
+        ? 'language-not-supported'
+        : 'service-not-allowed';
     case 'no-speech':
       return 'no-speech';
     case 'network':
@@ -97,7 +117,7 @@ export function useVoiceInput({
   defaultLang?: SpeechLangCode;
   onResultTranscript: (transcript: string) => void;
 }) {
-  const [speechLang, setSpeechLang] = useState<SpeechLangCode>(defaultLang);
+  const [speechLang, setSpeechLangState] = useState<SpeechLangCode>(defaultLang);
   const [status, setStatus] = useState<VoiceInputStatus>('idle');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [finalTranscript, setFinalTranscript] = useState<string | null>(null);
@@ -109,6 +129,7 @@ export function useVoiceInput({
   const committedResultRef = useRef(false);
   const onResultRef = useRef(onResultTranscript);
   onResultRef.current = onResultTranscript;
+  const startAttemptRef = useRef<(targetLang: string, triedFallback: boolean) => void>(() => {});
 
   const isSupported = Boolean(getSpeechRecognitionConstructor());
 
@@ -160,99 +181,133 @@ export function useVoiceInput({
     setFinalTranscript(null);
     setInterimTranscript('');
     setErrorCode(null);
-    if (status === 'error') {
-      setStatus('idle');
-    }
-  }, [status]);
+    setStatus((prev) => (prev === 'error' ? 'idle' : prev));
+  }, []);
 
-  const startListening = useCallback(() => {
-    const Ctor = getSpeechRecognitionConstructor();
-    if (!Ctor) {
-      setStatus('error');
-      setErrorCode('unsupported');
-      return;
-    }
+  const setSpeechLang = useCallback((nextLang: SpeechLangCode) => {
+    setSpeechLangState(nextLang);
+    setErrorCode(null);
+    setStatus((prev) => (prev === 'error' ? 'idle' : prev));
+  }, []);
 
-    cleanupInstance();
-    canceledByUserRef.current = false;
-    committedResultRef.current = false;
-    latestTranscriptRef.current = '';
+  const acceptTranscript = useCallback((rawText: string) => {
+    const clean = rawText.trim();
+    if (!clean) return;
     setErrorCode(null);
     setInterimTranscript('');
+    setFinalTranscript(clean);
+    setStatus('idle');
+    onResultRef.current(clean);
+  }, []);
 
-    try {
-      const recognition = new Ctor();
-      recognition.lang = speechLang;
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
-
-      recognition.onresult = (event: SpeechRecognitionEventLike) => {
-        let fullText = '';
-        let hasFinal = false;
-        for (let i = 0; i < event.results.length; i++) {
-          const result = event.results[i];
-          const text = result?.[0]?.transcript ?? '';
-          fullText += text;
-          if (result?.isFinal) {
-            hasFinal = true;
-          }
-        }
-
-        const clean = fullText.trim();
-        latestTranscriptRef.current = clean;
-        setInterimTranscript(clean);
-
-        if (hasFinal && clean && !committedResultRef.current) {
-          committedResultRef.current = true;
-          setFinalTranscript(clean);
-          onResultRef.current(clean);
-        }
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
-        if (canceledByUserRef.current || event.error === 'aborted') {
-          return;
-        }
-        const mapped = mapSpeechError(event.error);
-        setErrorCode(mapped);
+  const startRecognitionAttempt = useCallback(
+    (targetLang: string, triedFallback: boolean) => {
+      const Ctor = getSpeechRecognitionConstructor();
+      if (!Ctor) {
         setStatus('error');
-        cleanupInstance();
-      };
+        setErrorCode('unsupported');
+        return;
+      }
 
-      recognition.onend = () => {
-        const hadUserCancel = canceledByUserRef.current;
-        const captured = latestTranscriptRef.current;
-        recognitionRef.current = null;
-
-        if (hadUserCancel) {
-          setStatus('idle');
-          return;
-        }
-
-        // Mobile Safari/Android may end cleanly with interim text right before marking isFinal
-        if (!committedResultRef.current && captured) {
-          committedResultRef.current = true;
-          setFinalTranscript(captured);
-          onResultRef.current(captured);
-          setInterimTranscript('');
-          setStatus('idle');
-          return;
-        }
-
-        setInterimTranscript('');
-        setStatus((prev) => (prev === 'error' ? 'error' : 'idle'));
-      };
-
-      recognitionRef.current = recognition;
-      setStatus('listening');
-      recognition.start();
-    } catch {
       cleanupInstance();
-      setErrorCode('unknown');
-      setStatus('error');
-    }
-  }, [cleanupInstance, speechLang]);
+      canceledByUserRef.current = false;
+      committedResultRef.current = false;
+      latestTranscriptRef.current = '';
+      setErrorCode(null);
+      setInterimTranscript('');
+
+      try {
+        const recognition = new Ctor();
+        recognition.lang = targetLang;
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event: SpeechRecognitionEventLike) => {
+          if (recognitionRef.current !== recognition) return;
+          let fullText = '';
+          let hasFinal = false;
+          for (let i = 0; i < event.results.length; i++) {
+            const result = event.results[i];
+            const text = result?.[0]?.transcript ?? '';
+            fullText += text;
+            if (result?.isFinal) {
+              hasFinal = true;
+            }
+          }
+
+          const clean = fullText.trim();
+          latestTranscriptRef.current = clean;
+          setInterimTranscript(clean);
+
+          if (hasFinal && clean && !committedResultRef.current) {
+            committedResultRef.current = true;
+            setFinalTranscript(clean);
+            onResultRef.current(clean);
+          }
+        };
+
+        recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
+          if (recognitionRef.current !== recognition) return;
+          if (canceledByUserRef.current || event.error === 'aborted') {
+            return;
+          }
+          const mapped = mapSpeechError(event.error, targetLang);
+          const fallbackLang = getMyanmarFallbackLang(targetLang, triedFallback, mapped);
+          if (fallbackLang) {
+            // Some browsers accept the base BCP-47 tag 'my' even when 'my-MM' fails.
+            startAttemptRef.current(fallbackLang, true);
+            return;
+          }
+          setErrorCode(mapped);
+          setStatus('error');
+          cleanupInstance();
+        };
+
+        recognition.onend = () => {
+          if (recognitionRef.current !== recognition) return;
+          const hadUserCancel = canceledByUserRef.current;
+          const captured = latestTranscriptRef.current;
+          recognitionRef.current = null;
+
+          if (hadUserCancel) {
+            setStatus('idle');
+            return;
+          }
+
+          // Mobile Safari/Android may end cleanly with interim text right before marking isFinal
+          if (!committedResultRef.current && captured) {
+            committedResultRef.current = true;
+            setFinalTranscript(captured);
+            onResultRef.current(captured);
+            setInterimTranscript('');
+            setStatus('idle');
+            return;
+          }
+
+          setInterimTranscript('');
+          setStatus((prev) => (prev === 'error' ? 'error' : 'idle'));
+        };
+
+        recognitionRef.current = recognition;
+        setStatus('listening');
+        recognition.start();
+      } catch {
+        cleanupInstance();
+        const isMyanmarFallback =
+          triedFallback && (targetLang === 'my-MM' || targetLang === 'my');
+        setErrorCode(isMyanmarFallback ? 'language-not-supported' : 'unknown');
+        setStatus('error');
+      }
+    },
+    [cleanupInstance]
+  );
+
+  startAttemptRef.current = startRecognitionAttempt;
+
+  const startListening = useCallback(() => {
+    startRecognitionAttempt(speechLang, false);
+  }, [speechLang, startRecognitionAttempt]);
 
   return {
     isSupported,
@@ -266,5 +321,6 @@ export function useVoiceInput({
     stopListening,
     cancelListening,
     clearFeedback,
+    acceptTranscript,
   };
 }

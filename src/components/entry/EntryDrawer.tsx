@@ -83,7 +83,9 @@ export function EntryDrawer({
   const [amountInvalid, setAmountInvalid] = useState(false);
   const [amountErrorMsg, setAmountErrorMsg] = useState('');
   const [serverError, setServerError] = useState<string | null>(null);
+  const [dictationInput, setDictationInput] = useState('');
   const voiceLangSelectId = useId();
+  const dictationInputId = useId();
 
   const filteredCategories = useMemo(
     () => effectiveCategories.filter((c) => c.type === type),
@@ -131,6 +133,7 @@ export function EntryDrawer({
     stopListening,
     cancelListening,
     clearFeedback: clearVoiceFeedback,
+    acceptTranscript,
   } = useVoiceInput({
     defaultLang: 'en-US',
     onResultTranscript: handleParsedVoice,
@@ -141,6 +144,10 @@ export function EntryDrawer({
     switch (code) {
       case 'not-allowed':
         return t.voice.errNotAllowed;
+      case 'service-not-allowed':
+        return t.voice.errServiceNotAllowed;
+      case 'language-not-supported':
+        return t.voice.errLanguageUnsupported;
       case 'no-speech':
         return t.voice.errNoSpeech;
       case 'network':
@@ -160,6 +167,7 @@ export function EntryDrawer({
       wasOpenRef.current = false;
       cancelListening();
       clearVoiceFeedback();
+      setDictationInput('');
       return;
     }
 
@@ -315,6 +323,7 @@ export function EntryDrawer({
         setNote('');
         setAmountInvalid(false);
         setAmountErrorMsg('');
+        setDictationInput('');
         clearVoiceFeedback();
         amountInputRef.current?.focus();
       }
@@ -329,6 +338,18 @@ export function EntryDrawer({
     } else {
       dialogRef.current?.close();
     }
+  };
+
+  const handleApplyDictation = () => {
+    const cleaned = dictationInput.trim();
+    if (!cleaned) return;
+    acceptTranscript(cleaned);
+    setDictationInput('');
+  };
+
+  const handleSwitchToEnglishMic = () => {
+    setSpeechLang('en-US');
+    clearVoiceFeedback();
   };
 
   const parsedAmountPreview = Number(normalizeNumericInput(amountStr));
@@ -450,6 +471,61 @@ export function EntryDrawer({
                 {voiceErrorMessage}
               </div>
             )}
+
+            {(!isVoiceSupported ||
+              (voiceStatus === 'error' &&
+                (voiceErrorCode === 'language-not-supported' ||
+                  voiceErrorCode === 'service-not-allowed' ||
+                  voiceErrorCode === 'not-allowed' ||
+                  voiceErrorCode === 'unsupported'))) &&
+              voiceStatus !== 'listening' && (
+                <div className="voice-error-actions">
+                  {voiceStatus === 'error' &&
+                    voiceErrorCode === 'language-not-supported' &&
+                    isVoiceSupported &&
+                    speechLang !== 'en-US' && (
+                      <button
+                        type="button"
+                        className="btn-ghost voice-switch-btn"
+                        onClick={handleSwitchToEnglishMic}
+                      >
+                        {t.voice.switchToEnglishMic}
+                      </button>
+                    )}
+
+                  <div className="voice-fallback-dictate">
+                    <label htmlFor={dictationInputId} className="voice-dictate-label">
+                      {t.voice.dictateLabel}
+                    </label>
+                    <div className="voice-dictate-row">
+                      <input
+                        id={dictationInputId}
+                        type="text"
+                        className="field-input voice-dictate-input"
+                        value={dictationInput}
+                        onChange={(e) => setDictationInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            handleApplyDictation();
+                          }
+                        }}
+                        enterKeyHint="done"
+                        placeholder={t.voice.dictatePlaceholder}
+                        disabled={isSaving}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary voice-dictate-btn"
+                        disabled={!dictationInput.trim() || isSaving}
+                        onClick={handleApplyDictation}
+                      >
+                        {t.voice.dictateApplyBtn}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             {finalTranscript && voiceStatus !== 'listening' && (
               <div role="status" aria-live="polite" className="voice-result-banner">

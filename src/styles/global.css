@@ -1617,6 +1617,59 @@ dialog::backdrop {
   font-weight: 500;
 }
 
+.voice-error-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.voice-switch-btn {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-brand);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-elevated);
+}
+
+.voice-fallback-dictate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.voice-dictate-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.voice-dictate-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.field-input.voice-dictate-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0.5rem 0.7rem;
+  font-size: max(1rem, 1em);
+}
+
+.voice-dictate-btn {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
 .voice-result-banner {
   display: flex;
   flex-wrap: wrap;
